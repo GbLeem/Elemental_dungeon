@@ -2,19 +2,66 @@ import cocos
 from cocos.director import director
 import pyglet
 from pyglet.window import key
+from cocos import mapcolliders
 
+from collections import defaultdict
 
 class Mover(cocos.actions.Move):
+    KEYS_PRESSED = defaultdict(int)
+
     def step(self, dt):
-        super().step(dt)
-        vel_x = (keyboard[key.RIGHT] - keyboard[key.LEFT]) * 500
-        vel_y = (keyboard[key.UP] - keyboard[key.DOWN]) * 500
-        self.target.velocity = (vel_x, vel_y)
-        scroller.set_focus(self.target.x, self.target.y)
+        vel_x = (keyboard[key.RIGHT] - keyboard[key.LEFT]) * 200
+        vel_y = (keyboard[key.UP] - keyboard[key.DOWN]) * 200
+        dx = vel_x * dt
+        dy = vel_y * dt
+
+        last = self.target.get_rect()
+        new = last.copy()
+        
+        new.x += dx
+        new.y += dy
+        self.target.velocity = self.target.collide_map(last, new, vel_x, vel_y)
+
+        self.target.position = new.center
+        
+        scroller.set_focus(*new.center)
+
+
+        pressed = Mover.KEYS_PRESSED
+        s_pressed = pressed[key.S] == 1
+        if s_pressed:
+            self.jump()
+
+
+    # def update(self):
+    #     pressed = Mover.KEYS_PRESSED
+    #     s_pressed = pressed[key.S] == 1
+    #     if s_pressed:
+    #         self.jump()
+
+    def jump(self):
+        print("jump")
+        # keyinput = self.pressed[key.S]
+        # if keyinput != 0:
+        #     vel_z = keyinput * 100
+
+        # self.target.velocity = vel_z
+        # if vel_z != 0:
+
+    def attack(self):
+        normalattack = (keyboard[key.A])
+        print("attack")
+
+    def changemode(self):
+        firemode = (keyboard[key.NUM_1])
+        grassmode = (keyboard[key.NUM_2])
+        airmode = (keyboard[key.NUM_3])
+        
+        print("mode")
 
 
 class PlayerLayer(cocos.layer.ScrollableLayer):
-    def __init__(self):
+    def __init__(self, collision_handler):
         super().__init__()
 
         img = pyglet.image.load("img/Idle.png")
@@ -26,19 +73,21 @@ class PlayerLayer(cocos.layer.ScrollableLayer):
         anim = pyglet.image.Animation.from_image_sequence(img_grid[0:], 0.1, loop=True)
         
         sprite = cocos.sprite.Sprite(anim)
-        sprite.position = 200, 500
+        sprite.position = 50, 80
         sprite.velocity = (0,0)
+
+        sprite.collide_map = collision_handler
     
         sprite.do(Mover())
 
         self.add(sprite)
 
 
-# chapter14 tilemap collider 추가 필요
 class TileMap():
     def __init__(self):
-        bg = cocos.tiles.load("img/tile/testmap.tmx")
+        bg = cocos.tiles.load("img/tile/testmap01.tmx")
         self.layer01 = bg["layer01"]
+        self.collision = bg["colliders"]
 
 
 class BackGroundLayer(cocos.layer.ScrollableLayer):
@@ -54,49 +103,68 @@ class BackGroundLayer(cocos.layer.ScrollableLayer):
 
         self.add(bg)
     
-
-
-# class Sprite02(cocos.sprite.Sprite):
+# class GameSetting():
 #     def __init__(self):
-#         #image, position, rotation, scale, opacity, color, anchor, **kwargs
-#         super().__init__("img/Fall.png", scale= 2)
-#         self.position = 640, 360
+#         director.init(width = 640, height = 640, caption = "Elemental Dungeon")
+#         #director.window.pop_handlers()
 
+#         #key board input
+#         keyboard = key.KeyStateHandler()
+#         director.window.push_handlers(keyboard)
 
-# class MainLayer(cocos.layer.Layer):
-#     def __init__(self):
-#         super().__init__()
-#         label = cocos.text.Label("Elemental Dungeon", font_size = 32, anchor_x = "center", anchor_y = "center")
-        
-#         size = director.get_window_size()
-#         print(size)
-#         label.position = size[0]/2, size[1]/2
-#         self.add(label)
+#         # sprite layer
+#         bg_layer = BackGroundLayer()
+#         scroller = cocos.layer.ScrollingManager()
+#         scroller.add(bg_layer)
 
+#         #tilemap layer
+#         bg_tile = TileMap()
+#         scroller.add(bg_tile.layer01)
+#         scroller.add(bg_tile.collision)
+
+#         mapcollider = mapcolliders.TmxObjectMapCollider()
+#         mapcollider.on_bump_handler = mapcollider.on_bump_bounce
+#         collision_handler = mapcolliders.make_collision_handler(mapcollider, bg_tile.collision)
+
+#         #background layer
+#         spr01_layer = PlayerLayer(collision_handler)
+#         scroller.add(spr01_layer)
+
+#     def make_scene(self):
+#         testScene = cocos.scene.Scene() #한번에 하나의 Scene만 가능
+#         testScene.add(scroller, 0, "background")
+#         return testScene
 
 if __name__ == '__main__':
     director.init(width = 640, height = 640, caption = "Elemental Dungeon")
+    #director.window.pop_handlers()
 
     #key board input
     keyboard = key.KeyStateHandler()
     director.window.push_handlers(keyboard)
 
     # sprite layer
-    spr01_layer = PlayerLayer()
-    
-    #background layer
     bg_layer = BackGroundLayer()
     scroller = cocos.layer.ScrollingManager()
     scroller.add(bg_layer)
-    scroller.add(spr01_layer)
 
     #tilemap layer
     bg_tile = TileMap()
     scroller.add(bg_tile.layer01)
+    scroller.add(bg_tile.collision)
+    
+    mapcollider = mapcolliders.TmxObjectMapCollider()
+    mapcollider.on_bump_handler = mapcollider.on_bump_bounce
+    collision_handler = mapcolliders.make_collision_handler(mapcollider, bg_tile.collision)
+
+    #background layer
+    spr01_layer = PlayerLayer(collision_handler)
+    scroller.add(spr01_layer)
 
     # create Scene
     testScene = cocos.scene.Scene() #한번에 하나의 Scene만 가능
-    
-    testScene.add(scroller, 0, "background")
     #testScene.add(spr01_layer, 1, "player1") # layer의 층 설정 가능, layer의 이름 설정 가능
+    testScene.add(scroller, 0, "background")
     cocos.director.director.run(testScene)
+    #GameSetting()
+    #testScene = GameSetting().make_scene

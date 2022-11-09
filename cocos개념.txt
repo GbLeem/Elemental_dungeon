@@ -1,0 +1,5 @@
+Node -> director -> Scene -> Layer -> Sprite -> Action
+
+input, sound
+
+클래스 구조 생각

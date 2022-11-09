@@ -1,2 +1,3 @@
 # Elemental_dungeon
-cocos2d python game
+2022-2 GameProgramming term project
+* use cocos2d python
