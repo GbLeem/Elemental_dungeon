@@ -4,16 +4,18 @@ import pyglet
 from pyglet.window import key
 from cocos import mapcolliders
 
-from collections import defaultdict
 
+# 더 세분화 해야 할듯
 class Mover(cocos.actions.Move):
-    KEYS_PRESSED = defaultdict(int)
-
     def step(self, dt):
         vel_x = (keyboard[key.RIGHT] - keyboard[key.LEFT]) * 200
         vel_y = (keyboard[key.UP] - keyboard[key.DOWN]) * 200
         dx = vel_x * dt
         dy = vel_y * dt
+        
+        # TODO: jump
+        vel_z = keyboard[key.S]*100
+        dz = vel_z*dt
 
         last = self.target.get_rect()
         new = last.copy()
@@ -26,12 +28,22 @@ class Mover(cocos.actions.Move):
         
         scroller.set_focus(*new.center)
 
+        
+      
+        # keyboard input test
+        normalattack = keyboard[key.A]
+        firemode = keyboard[key.Q]
+        grassmode = keyboard[key.W]
+        airmode = keyboard[key.E]
 
-        pressed = Mover.KEYS_PRESSED
-        s_pressed = pressed[key.S] == 1
-        if s_pressed:
-            self.jump()
-
+        if normalattack != 0:
+            self.attack()
+        if firemode !=0:
+            self.firemode()
+        if grassmode !=0:
+            self.grassmode()
+        if airmode !=0:
+            self.airmode()
 
     # def update(self):
     #     pressed = Mover.KEYS_PRESSED
@@ -49,16 +61,16 @@ class Mover(cocos.actions.Move):
         # if vel_z != 0:
 
     def attack(self):
-        normalattack = (keyboard[key.A])
         print("attack")
 
-    def changemode(self):
-        firemode = (keyboard[key.NUM_1])
-        grassmode = (keyboard[key.NUM_2])
-        airmode = (keyboard[key.NUM_3])
-        
-        print("mode")
+    def firemode(self):
+        print("fire mode")
 
+    def grassmode(self):
+        print("grass mode")
+    
+    def airmode(self):
+        print("air mode")
 
 class PlayerLayer(cocos.layer.ScrollableLayer):
     def __init__(self, collision_handler):

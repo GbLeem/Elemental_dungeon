@@ -2,4 +2,15 @@ Node -> director -> Scene -> Layer -> Sprite -> Action
 
 input, sound
 
-클래스 구조 생각
+
+<클래스 구조>
+
+액터-캐릭터/적-일반,보스
+아이템-원소/체력물약
+맵-씬마다 다른맵
+메뉴-시작메뉴
+게임레이어-게임 시작/HUD/게임 세팅
+main-게임 시작
+
+
+액터 클래스 상속받는 mover클래스?
