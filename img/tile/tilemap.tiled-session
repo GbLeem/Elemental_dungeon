@@ -3,12 +3,39 @@
         "height": 4300,
         "width": 2
     },
+    "activeFile": "testmap01.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "testmap01.tmx": {
+            "scale": 1,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 348,
+                "y": 266
+            }
+        },
+        "tilemap.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
     "last.imagePath": "D:/KHU/22-2/GameProgramming/Game_Git/img/tile",
     "map.height": 20,
     "map.lastUsedFormat": "tmx",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
     "map.width": 40,
+    "openFiles": [
+        "tilemap.tsx",
+        "testmap01.tmx"
+    ],
+    "project": "tilemap.tiled-project",
+    "recentFiles": [
+        "tilemap.tsx",
+        "testmap01.tmx"
+    ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {
         "height": 16,
