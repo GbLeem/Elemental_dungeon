@@ -69,6 +69,12 @@ class Player(pygame.sprite.Sprite):
         self.animation_count = 0
         self.fall_count =  0
         self.jump_count = 0
+        self.hit = False
+        self.hit_count = 0
+        
+        self.current_health = 200
+        self.max_health = 200
+        self.healt_bar_length = 200
 
     def jump(self):
         self.y_vel = -self.GRAVITY * 8
@@ -82,6 +88,24 @@ class Player(pygame.sprite.Sprite):
         self.rect.x += dx
         self.rect.y += dy
     
+    #데미지 입기 + 애니메이션
+    def make_hit(self,amount):
+        self.hit_count = 0
+        if self.current_health > 0:
+            self.current_health -= amount
+            self.hit = True
+            print(f"health: {self.current_health}")
+            
+        if self.current_health <=0:
+            self.current_health = 0
+
+    #체력 회복
+    def get_health(self,amount):
+        if self.current_health < self.max_health:
+            self.current_health += amount
+        if self.current_health >= self.max_health:
+            self.current_health = self.max_health
+
     def move_left(self,vel):
         self.x_vel = -vel
         if self.direction != "left":
@@ -98,6 +122,12 @@ class Player(pygame.sprite.Sprite):
         self.y_vel += min(1, (self.fall_count/fps) * self.GRAVITY)
         self.move(self.x_vel, self.y_vel)
 
+        if self.hit:
+            self.hit_count += 1
+        if self.hit_count > fps * 2:
+            self.hit = False
+            self.hit_count = 0
+
         self.fall_count += 1
         self.update_sprite()
         
@@ -112,7 +142,9 @@ class Player(pygame.sprite.Sprite):
 
     def update_sprite(self):
         sprite_sheet = "Idle"
-        if self.y_vel < 0:
+        if self.hit:
+            sprite_sheet = "Hit"
+        elif self.y_vel < 0:
             if self.jump_count == 1:
                 sprite_sheet = "Jump"
             elif self.jump_count == 2:
@@ -137,6 +169,7 @@ class Player(pygame.sprite.Sprite):
         #self.sprite = self.SPRITES["Idle_"+ self.direction][0]
         win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
+
 class Object(pygame.sprite.Sprite):
     def __init__(self, x,y,width,height, name = None):
         super().__init__()
@@ -157,6 +190,34 @@ class Block(Object):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+# 38*38
+class Saw(Object):
+    ANIMATION_DELAY = 3
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y, width, height, "Saw")
+        self.saw = load_sprite_sheets("Traps","Saw",width,height)
+        self.image = self.saw["Off"][0]
+        self.mask = pygame.mask.from_surface(self.image)
+        self.animation_count = 0
+        self.animation_name = "Off"
+
+    def on(self):
+        self.animation_name = "On"
+
+    def off(self):
+        self.animation_name = "Off"
+
+    def loop(self):
+        sprites = self.saw[self.animation_name]
+        sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
+        self.image = sprites[sprite_index]
+        self.animation_count += 1
+
+        self.rect = self.image.get_rect(topleft = (self.rect.x, self.rect.y))
+        self.mask = pygame.mask.from_surface(self.image)
+
+        if self.animation_count // self.ANIMATION_DELAY > len(sprites):
+            self.animation_count = 0
 
 def get_background(name):
     image = pygame.image.load(join("img", "Background", name))
@@ -178,6 +239,9 @@ def draw(window, background, bg_image, player,objects,offset_x):
     for object in objects:
         object.draw(window, offset_x)
 
+    pygame.draw.rect(window, (255,0,0), (10,10, player.current_health, 25))
+    pygame.draw.rect(window, (255,255,255), (10,10, player.healt_bar_length, 25), 4)
+
     player.draw(window, offset_x)
     pygame.display.update()
 
@@ -194,7 +258,7 @@ def handle_vertical_collision(player, objects, dy):
                 player.rect.top = object.rect.bottom
                 player.hit_head()
 
-        collided_objects.append(object)
+            collided_objects.append(object)
 
     return collided_objects
             
@@ -223,7 +287,11 @@ def handle_move(player, objects):
     if keys[pygame.K_RIGHT] and not collide_right:
         player.move_right(PLAYER_VEL)
 
-    handle_vertical_collision(player, objects, player.y_vel)
+    vertical_collide = handle_vertical_collision(player, objects, player.y_vel)
+    to_check = [collide_left, collide_right, *vertical_collide]
+    for obj in to_check:
+        if obj and obj.name == "Saw":
+            player.make_hit(10)
 
 
 def main(window):
@@ -233,10 +301,13 @@ def main(window):
     block_size = 96
 
     player = Player(100,100,50,50)
+
+    saw = Saw(100, HEIGHT - block_size - 76, 38, 76)
+    saw.on()
     #blocks = [Block(0, HEIGHT-block_size, block_size)]
     floor = [Block(i*block_size, HEIGHT - block_size, block_size) for i in range(-WIDTH//block_size, WIDTH * 2 //block_size)]
 
-    objects = [*floor, Block(0, HEIGHT - block_size*2, block_size), Block(block_size * 3, HEIGHT - block_size*4, block_size)] 
+    objects = [*floor, Block(0, HEIGHT - block_size*2, block_size), Block(block_size * 3, HEIGHT - block_size*4, block_size), saw] 
 
     offset_x = 0
     scroll_area_width = 200
@@ -255,6 +326,8 @@ def main(window):
                     player.jump()
         
         player.loop(FPS)
+        saw.loop()
+
         handle_move(player, objects)
         draw(window, background, bg_image, player,objects, offset_x)
 
