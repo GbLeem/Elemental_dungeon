@@ -54,7 +54,6 @@ def get_block(size):
 
 
 class Player(pygame.sprite.Sprite):
-    COLOR = (255, 0, 0)
     GRAVITY = 1
     SPRITES = load_sprite_sheets("player","",32,32,True)
     ANIMATION_DELAY = 3
@@ -72,9 +71,16 @@ class Player(pygame.sprite.Sprite):
         self.hit = False
         self.hit_count = 0
         
+        # for health
         self.current_health = 200
         self.max_health = 200
         self.healt_bar_length = 200
+
+        # for attack
+        self.can_attack = False
+        self.attack_count = 0
+        self.attack_gage = 10
+        self.current_attack_gage = 10
 
     def jump(self):
         self.y_vel = -self.GRAVITY * 8
@@ -83,6 +89,10 @@ class Player(pygame.sprite.Sprite):
         if self.jump_count == 1:
             self.fall_count = 0
 
+    # 공격 시 애니메이션 처리 / gage관리
+    def attack(self):
+        self.can_attack = True
+        self.animation_count = 0
 
     def move(self,dx,dy):
         self.rect.x += dx
@@ -94,7 +104,7 @@ class Player(pygame.sprite.Sprite):
         if self.current_health > 0:
             self.current_health -= amount
             self.hit = True
-            print(f"health: {self.current_health}")
+            #print(f"health: {self.current_health}")
             
         if self.current_health <=0:
             self.current_health = 0
@@ -124,9 +134,15 @@ class Player(pygame.sprite.Sprite):
 
         if self.hit:
             self.hit_count += 1
-        if self.hit_count > fps * 2:
+        if self.hit_count > fps:
             self.hit = False
             self.hit_count = 0
+
+        if self.can_attack:
+            self.attack_count += 1
+            if self.attack_count > fps*0.2:
+                self.can_attack = False
+                self.attack_count = 0
 
         self.fall_count += 1
         self.update_sprite()
@@ -144,6 +160,8 @@ class Player(pygame.sprite.Sprite):
         sprite_sheet = "Idle"
         if self.hit:
             sprite_sheet = "Hit"
+        elif self.can_attack:
+            sprite_sheet = "Attack"
         elif self.y_vel < 0:
             if self.jump_count == 1:
                 sprite_sheet = "Jump"
@@ -169,6 +187,44 @@ class Player(pygame.sprite.Sprite):
         #self.sprite = self.SPRITES["Idle_"+ self.direction][0]
         win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
+
+class Enemy(pygame.sprite.Sprite):
+    GRAVITY = 1
+    SPRITES = load_sprite_sheets("Trunk","",64,32,True)
+    ANIMATION_DELAY = 3
+
+    def __init__(self,x,y,width,height,end):
+        super().__init__()
+        self.rect = pygame.Rect(x, y, width, height)
+        self.x = x
+        self.y = y
+        self.mask = None
+        self.direction = "left"
+        self.path = [x,end]
+        self.walkCount = 0
+        self.vel = 3
+        self.animation_count = 0
+    
+    def update_sprite(self):
+        sprite_sheet = "Idle"
+
+        sprite_sheet_name = sprite_sheet + "_" + self.direction
+        sprites = self.SPRITES[sprite_sheet_name]
+        sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
+        self.sprite = sprites[sprite_index]
+        self.animation_count += 1
+        self.update()
+
+    def update(self):
+        self.rect = self.sprite.get_rect(topleft = (self.rect.x, self.rect.y))
+        self.mask = pygame.mask.from_surface(self.sprite)
+        
+    def draw(self, win, offset_x):
+        win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
+
+    def loop(self):
+        self.update_sprite()
+    
 
 class Object(pygame.sprite.Sprite):
     def __init__(self, x,y,width,height, name = None):
@@ -219,6 +275,26 @@ class Saw(Object):
         if self.animation_count // self.ANIMATION_DELAY > len(sprites):
             self.animation_count = 0
 
+
+class Projectile(object):
+    def __init__ (self, x,y,radius,color,facing):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.color = color
+        self.facing = facing
+        self.velocity = 8 * facing
+
+    def draw(self, win, offset):
+        pygame.draw.circle(win, self.color, (self.x-offset, self.y), self.radius)
+
+class FireProjectile(Projectile):
+    def __init__(self, x, y, radius, color, facing):
+        super().__init__(x, y, radius, color, facing)
+        self.type = "fire"
+        self.damage = 10
+
+
 def get_background(name):
     image = pygame.image.load(join("img", "Background", name))
     _, _, width, height = image.get_rect()
@@ -232,17 +308,26 @@ def get_background(name):
     return tiles, image
 
 
-def draw(window, background, bg_image, player,objects,offset_x):
+def draw(window, background, bg_image, player,objects,offset_x, bullets,enemy1):
     for tile in background:
         window.blit(bg_image, tile)
 
     for object in objects:
         object.draw(window, offset_x)
 
+    for bullet in bullets:
+        bullet.draw(window, offset_x)
+        #print(f"draw : {bullet.x}")
+
     pygame.draw.rect(window, (255,0,0), (10,10, player.current_health, 25))
     pygame.draw.rect(window, (255,255,255), (10,10, player.healt_bar_length, 25), 4)
 
+    pygame.draw.rect(window, (0,0,0), (10,35, player.current_attack_gage * 20, 25))
+    pygame.draw.rect(window, (255,255,255), (10,35, player.attack_gage * 20, 25), 4)
+
     player.draw(window, offset_x)
+    enemy1.draw(window, offset_x)
+
     pygame.display.update()
 
 
@@ -261,7 +346,8 @@ def handle_vertical_collision(player, objects, dy):
             collided_objects.append(object)
 
     return collided_objects
-            
+
+
 def collide(player, objects, dx):
     player.move(dx, 0)
     player.update()
@@ -274,6 +360,7 @@ def collide(player, objects, dx):
     player.move(-dx, 0)
     player.update()
     return collided_object
+
 
 def handle_move(player, objects):
     keys = pygame.key.get_pressed()
@@ -301,9 +388,11 @@ def main(window):
     block_size = 96
 
     player = Player(100,100,50,50)
+    enemy1 = Enemy(400, HEIGHT - block_size- 64, 32, 32, 600)
 
     saw = Saw(100, HEIGHT - block_size - 76, 38, 76)
     saw.on()
+
     #blocks = [Block(0, HEIGHT-block_size, block_size)]
     floor = [Block(i*block_size, HEIGHT - block_size, block_size) for i in range(-WIDTH//block_size, WIDTH * 2 //block_size)]
 
@@ -312,9 +401,18 @@ def main(window):
     offset_x = 0
     scroll_area_width = 200
 
+    bullets = []
     run = True
     while(run):
         clock.tick(FPS)
+        
+        # for bullet    
+        for b in bullets:
+            if b.x > player.rect.centerx - 700 and b.x < player.rect.centerx + 700:
+                b.x += b.velocity
+                #print(f"{b.x}")
+            else:
+                bullets.pop(bullets.index(b))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -322,22 +420,39 @@ def main(window):
                 break
 
             if event.type == pygame.KEYDOWN:
+                # jump
                 if event.key == pygame.K_s and player.jump_count < 2:
                     player.jump()
-        
+
+                # attack
+                if event.key == pygame.K_a:
+                    player.attack()
+                    if player.direction == "left":
+                        facing = -1
+                    else:
+                        facing = 1
+
+                    if player.current_attack_gage > 0:
+                        bullet = Projectile(player.rect.centerx, player.rect.centery, 6, (0,0,0), facing)                    
+                        bullets.append(bullet)
+                        #print(f"player : {player.rect.centerx}, {player.rect.centery}")
+                        #print(f"bullet : {bullet.x}, {bullet.y}")
+                        player.current_attack_gage -= 1
+                    if player.current_attack_gage == 0:
+                        player.can_attack = False
+                
         player.loop(FPS)
+        enemy1.loop()
         saw.loop()
 
         handle_move(player, objects)
-        draw(window, background, bg_image, player,objects, offset_x)
+        draw(window, background, bg_image, player,objects, offset_x, bullets, enemy1)
 
         if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
             offset_x += player.x_vel
 
     pygame.quit()
     quit()
-
-
 
 if __name__ == "__main__":
     main(window)
