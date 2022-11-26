@@ -82,6 +82,10 @@ class Player(pygame.sprite.Sprite):
         self.attack_gage = 10
         self.current_attack_gage = 10
 
+        # for skill 
+        self.skill1_gage = 10
+        self.current_skill1_gage = 10
+        
     def jump(self):
         self.y_vel = -self.GRAVITY * 8
         self.animation_count = 0
@@ -104,8 +108,6 @@ class Player(pygame.sprite.Sprite):
         if self.current_health > 0:
             self.current_health -= amount
             self.hit = True
-            #print(f"health: {self.current_health}")
-            
         if self.current_health <=0:
             self.current_health = 0
 
@@ -196,17 +198,43 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self,x,y,width,height,end):
         super().__init__()
         self.rect = pygame.Rect(x, y, width, height)
-        self.x = x
-        self.y = y
+        self.name = "enemy"
         self.mask = None
         self.direction = "left"
         self.path = [x,end]
-        self.walkCount = 0
         self.vel = 3
         self.animation_count = 0
+
+        # for damage
+        self.damaged = False
+        self.damaged_count = 0
     
+
+    def move(self):
+        if self.vel > 0:
+            self.direction = "left"
+            if self.rect.x < self.path[1] + self.vel:
+                self.rect.x += self.vel
+            else:
+                self.vel = self.vel*-1
+                self.rect.x += self.vel
+                self.animation_count = 0
+        else:
+            self.direction = "right"
+            if self.rect.x > self.path[0] - self.vel:
+                self.rect.x += self.vel
+            else:
+                self.vel  = self.vel * -1
+                self.rect.x += self.vel
+                self.animation_count = 0
+
     def update_sprite(self):
         sprite_sheet = "Idle"
+        if self.vel != 0:
+            sprite_sheet = "Run"
+        if self.damaged:
+            sprite_sheet = "Hit"
+            self.vel = 0
 
         sprite_sheet_name = sprite_sheet + "_" + self.direction
         sprites = self.SPRITES[sprite_sheet_name]
@@ -214,7 +242,7 @@ class Enemy(pygame.sprite.Sprite):
         self.sprite = sprites[sprite_index]
         self.animation_count += 1
         self.update()
-
+    
     def update(self):
         self.rect = self.sprite.get_rect(topleft = (self.rect.x, self.rect.y))
         self.mask = pygame.mask.from_surface(self.sprite)
@@ -222,7 +250,15 @@ class Enemy(pygame.sprite.Sprite):
     def draw(self, win, offset_x):
         win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
-    def loop(self):
+    def loop(self, fps):
+        self.move()
+        if self.damaged:
+            self.damaged_count +=1
+        if self.damaged_count > fps:
+            self.damaged = False
+            self.damaged_count = 0
+            self.vel = 3
+
         self.update_sprite()
     
 
@@ -288,6 +324,7 @@ class Projectile(object):
     def draw(self, win, offset):
         pygame.draw.circle(win, self.color, (self.x-offset, self.y), self.radius)
 
+
 class FireProjectile(Projectile):
     def __init__(self, x, y, radius, color, facing):
         super().__init__(x, y, radius, color, facing)
@@ -308,7 +345,7 @@ def get_background(name):
     return tiles, image
 
 
-def draw(window, background, bg_image, player,objects,offset_x, bullets,enemy1):
+def draw(window, background, bg_image, player, objects, offset_x, bullets, enemy1):
     for tile in background:
         window.blit(bg_image, tile)
 
@@ -317,13 +354,15 @@ def draw(window, background, bg_image, player,objects,offset_x, bullets,enemy1):
 
     for bullet in bullets:
         bullet.draw(window, offset_x)
-        #print(f"draw : {bullet.x}")
 
     pygame.draw.rect(window, (255,0,0), (10,10, player.current_health, 25))
     pygame.draw.rect(window, (255,255,255), (10,10, player.healt_bar_length, 25), 4)
 
     pygame.draw.rect(window, (0,0,0), (10,35, player.current_attack_gage * 20, 25))
     pygame.draw.rect(window, (255,255,255), (10,35, player.attack_gage * 20, 25), 4)
+
+    pygame.draw.rect(window, (0,255,0), (10,60, player.current_skill1_gage * 20, 25))
+    pygame.draw.rect(window, (255,255,255), (10,60, player.skill1_gage * 20, 25), 4)
 
     player.draw(window, offset_x)
     enemy1.draw(window, offset_x)
@@ -380,6 +419,9 @@ def handle_move(player, objects):
         if obj and obj.name == "Saw":
             player.make_hit(10)
 
+        if obj and obj.name == "enemy":
+            player.make_hit(20)
+
 
 def main(window):
     clock = pygame.time.Clock()
@@ -388,7 +430,7 @@ def main(window):
     block_size = 96
 
     player = Player(100,100,50,50)
-    enemy1 = Enemy(400, HEIGHT - block_size- 64, 32, 32, 600)
+    enemy1 = Enemy(400, HEIGHT - block_size- 64, 32, 32, 1000)
 
     saw = Saw(100, HEIGHT - block_size - 76, 38, 76)
     saw.on()
@@ -396,7 +438,7 @@ def main(window):
     #blocks = [Block(0, HEIGHT-block_size, block_size)]
     floor = [Block(i*block_size, HEIGHT - block_size, block_size) for i in range(-WIDTH//block_size, WIDTH * 2 //block_size)]
 
-    objects = [*floor, Block(0, HEIGHT - block_size*2, block_size), Block(block_size * 3, HEIGHT - block_size*4, block_size), saw] 
+    objects = [*floor, Block(0, HEIGHT - block_size*2, block_size), Block(block_size * 3, HEIGHT - block_size*4, block_size), saw, enemy1] 
 
     offset_x = 0
     scroll_area_width = 200
@@ -411,6 +453,13 @@ def main(window):
             if b.x > player.rect.centerx - 700 and b.x < player.rect.centerx + 700:
                 b.x += b.velocity
                 #print(f"{b.x}")
+                #print(f"{b.y}, {enemy1.rect.centery}")
+                if (b.x >= enemy1.rect.centerx-5 and b.x <= enemy1.rect.centerx + 5) and (b.y >= enemy1.rect.centery-5 and b.y <= enemy1.rect.centery + 5):
+                    print(f"{enemy1.rect.x}, {b.x}")
+                    enemy1.damaged = True
+                    bullets.pop(bullets.index(b))
+                else:
+                    enemy1.damaged = False
             else:
                 bullets.pop(bullets.index(b))
 
@@ -440,9 +489,9 @@ def main(window):
                         player.current_attack_gage -= 1
                     if player.current_attack_gage == 0:
                         player.can_attack = False
-                
+            
         player.loop(FPS)
-        enemy1.loop()
+        enemy1.loop(FPS)
         saw.loop()
 
         handle_move(player, objects)
