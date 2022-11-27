@@ -190,7 +190,7 @@ class Player(pygame.sprite.Sprite):
         win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
 
-class Enemy(pygame.sprite.Sprite):
+class Enemy(object):
     GRAVITY = 1
     SPRITES = load_sprite_sheets("Trunk","",64,32,True)
     ANIMATION_DELAY = 3
@@ -208,7 +208,12 @@ class Enemy(pygame.sprite.Sprite):
         # for damage
         self.damaged = False
         self.damaged_count = 0
-    
+
+        # health
+        self.health = 10
+
+        # for death
+        self.visible = True
 
     def move(self):
         if self.vel > 0:
@@ -227,6 +232,10 @@ class Enemy(pygame.sprite.Sprite):
                 self.vel  = self.vel * -1
                 self.rect.x += self.vel
                 self.animation_count = 0
+
+    def dead(self):
+        self.visible = False
+        self.rect = pygame.Rect(0,0, 0,0) # for collision ending
 
     def update_sprite(self):
         sprite_sheet = "Idle"
@@ -248,8 +257,10 @@ class Enemy(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.sprite)
         
     def draw(self, win, offset_x):
-        win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
+        if self.visible:
+            win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
+    
     def loop(self, fps):
         self.move()
         if self.damaged:
@@ -258,9 +269,23 @@ class Enemy(pygame.sprite.Sprite):
             self.damaged = False
             self.damaged_count = 0
             self.vel = 3
+        if self.health <= 0:
+            self.dead()
 
         self.update_sprite()
+
+class Elements(object):
+    def __init__(self, x,y, width, color):
+        super().__init__()
+        self.x = x
+        self.y = y
+        self.width = width
+        self.color = color        
     
+    def draw(self,win,offset_x):
+        pygame.draw.rect(win, self.color, (self.x-offset_x, self.y, self.width, self.width))
+        #print(self.x)
+
 
 class Object(pygame.sprite.Sprite):
     def __init__(self, x,y,width,height, name = None):
@@ -325,11 +350,11 @@ class Projectile(object):
         pygame.draw.circle(win, self.color, (self.x-offset, self.y), self.radius)
 
 
-class FireProjectile(Projectile):
-    def __init__(self, x, y, radius, color, facing):
-        super().__init__(x, y, radius, color, facing)
-        self.type = "fire"
-        self.damage = 10
+# class FireProjectile(Projectile):
+#     def __init__(self, x, y, radius, color, facing):
+#         super().__init__(x, y, radius, color, facing)
+#         self.type = "fire"
+#         self.damage = 10
 
 
 def get_background(name):
@@ -345,7 +370,7 @@ def get_background(name):
     return tiles, image
 
 
-def draw(window, background, bg_image, player, objects, offset_x, bullets, enemy1):
+def draw(window, background, bg_image, player, objects, offset_x, bullets, enemy1, elements):
     for tile in background:
         window.blit(bg_image, tile)
 
@@ -355,18 +380,21 @@ def draw(window, background, bg_image, player, objects, offset_x, bullets, enemy
     for bullet in bullets:
         bullet.draw(window, offset_x)
 
+    for element in elements:
+        element.draw(window, offset_x)
+
     pygame.draw.rect(window, (255,0,0), (10,10, player.current_health, 25))
     pygame.draw.rect(window, (255,255,255), (10,10, player.healt_bar_length, 25), 4)
 
     pygame.draw.rect(window, (0,0,0), (10,35, player.current_attack_gage * 20, 25))
     pygame.draw.rect(window, (255,255,255), (10,35, player.attack_gage * 20, 25), 4)
 
-    pygame.draw.rect(window, (0,255,0), (10,60, player.current_skill1_gage * 20, 25))
+    pygame.draw.rect(window, (200,100,0), (10,60, player.current_skill1_gage * 20, 25))
     pygame.draw.rect(window, (255,255,255), (10,60, player.skill1_gage * 20, 25), 4)
 
     player.draw(window, offset_x)
     enemy1.draw(window, offset_x)
-
+    
     pygame.display.update()
 
 
@@ -444,6 +472,9 @@ def main(window):
     scroll_area_width = 200
 
     bullets = []
+    elements = [] # for increase skill gage / but now for ammo
+    element_draw_count = 0
+
     run = True
     while(run):
         clock.tick(FPS)
@@ -455,13 +486,34 @@ def main(window):
                 #print(f"{b.x}")
                 #print(f"{b.y}, {enemy1.rect.centery}")
                 if (b.x >= enemy1.rect.centerx-5 and b.x <= enemy1.rect.centerx + 5) and (b.y >= enemy1.rect.centery-5 and b.y <= enemy1.rect.centery + 5):
-                    print(f"{enemy1.rect.x}, {b.x}")
+                    #print(f"{enemy1.rect.x}, {b.x}")
                     enemy1.damaged = True
+                    enemy1.health -= 2 # bullet 이랑 skill damage를 적용해야 함!! 지금은 그냥 임시 숫자임
+                    #print(f"{enemy1.health}")
                     bullets.pop(bullets.index(b))
                 else:
                     enemy1.damaged = False
             else:
                 bullets.pop(bullets.index(b))
+    
+        # for getting item
+        for e in elements:
+            if (player.rect.centerx >= e.x-5 and player.rect.centerx <= e.x+5) and (player.rect.centery >= e.y-5 and player.rect.centery <= e.y+5):
+            #if player.rect.centerx == e.x:
+                player.current_attack_gage += 5
+                elements.pop(elements.index(e))
+
+                # gage 넘어가지 않게 처리
+                if player.current_attack_gage > 10:
+                    player.current_attack_gage = 10
+
+        # item spawn
+        if enemy1.health <= 0:
+            if element_draw_count == 0:
+                element = Elements(enemy1.rect.centerx, enemy1.rect.centery, 20, "black")
+                elements.append(element)
+                element_draw_count += 1
+
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -495,7 +547,7 @@ def main(window):
         saw.loop()
 
         handle_move(player, objects)
-        draw(window, background, bg_image, player,objects, offset_x, bullets, enemy1)
+        draw(window, background, bg_image, player,objects, offset_x, bullets, enemy1, elements)
 
         if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
             offset_x += player.x_vel
