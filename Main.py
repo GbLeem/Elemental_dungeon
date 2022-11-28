@@ -79,12 +79,16 @@ class Player(pygame.sprite.Sprite):
         # for attack
         self.can_attack = False
         self.attack_count = 0
-        self.attack_gage = 10
-        self.current_attack_gage = 10
+        self.attack_gage = 20
+        self.current_attack_gage = 20
 
         # for skill 
         self.skill1_gage = 10
-        self.current_skill1_gage = 10
+        self.current_skill1_gage = 0
+        self.skill2_gage = 10
+        self.current_skill2_gage = 0
+        self.skill3_gage = 10
+        self.current_skill3_gage = 0
         
     def jump(self):
         self.y_vel = -self.GRAVITY * 8
@@ -102,6 +106,9 @@ class Player(pygame.sprite.Sprite):
         self.rect.x += dx
         self.rect.y += dy
     
+    def death(self):
+        pass
+
     #데미지 입기 + 애니메이션
     def make_hit(self,amount):
         self.hit_count = 0
@@ -110,6 +117,7 @@ class Player(pygame.sprite.Sprite):
             self.hit = True
         if self.current_health <=0:
             self.current_health = 0
+            self.death()
 
     #체력 회복
     def get_health(self,amount):
@@ -164,6 +172,10 @@ class Player(pygame.sprite.Sprite):
             sprite_sheet = "Hit"
         elif self.can_attack:
             sprite_sheet = "Attack"
+        # 죽는 것 구현하는 부분
+        elif self.current_health <= 0:
+            sprite_sheet = "Die"
+            #한번만 보여주고 끝나기 추가하기
         elif self.y_vel < 0:
             if self.jump_count == 1:
                 sprite_sheet = "Jump"
@@ -189,13 +201,13 @@ class Player(pygame.sprite.Sprite):
         #self.sprite = self.SPRITES["Idle_"+ self.direction][0]
         win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
-
+#======================================Enemy====================================================================
 class Enemy(object):
     GRAVITY = 1
     SPRITES = load_sprite_sheets("Trunk","",64,32,True)
     ANIMATION_DELAY = 3
 
-    def __init__(self,x,y,width,height,end):
+    def __init__(self,x,y,width,height,end, elemental):
         super().__init__()
         self.rect = pygame.Rect(x, y, width, height)
         self.name = "enemy"
@@ -208,6 +220,7 @@ class Enemy(object):
         # for damage
         self.damaged = False
         self.damaged_count = 0
+        self.elemental = elemental
 
         # health
         self.health = 10
@@ -237,6 +250,12 @@ class Enemy(object):
         self.visible = False
         self.rect = pygame.Rect(0,0, 0,0) # for collision ending
 
+    # def attack_player(self):
+    #     pass
+
+    # def hit(self):
+    #     pass
+    
     def update_sprite(self):
         sprite_sheet = "Idle"
         if self.vel != 0:
@@ -259,7 +278,6 @@ class Enemy(object):
     def draw(self, win, offset_x):
         if self.visible:
             win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
-
     
     def loop(self, fps):
         self.move()
@@ -271,8 +289,140 @@ class Enemy(object):
             self.vel = 3
         if self.health <= 0:
             self.dead()
-
         self.update_sprite()
+
+
+# 36*30
+class FireEnemy(object):
+    GRAVITY = 1
+    SPRITES = load_sprite_sheets("AngryPig","",36, 30,True)
+    ANIMATION_DELAY = 3
+
+    def __init__(self, x, y, width, height, end, elemental):
+        super().__init__()
+        self.rect = pygame.Rect(x, y, width, height)
+        self.name = "enemy"
+        self.mask = None
+        self.direction = "left"
+        self.path = [x, end]
+        self.vel = 3
+        self.animation_count = 0
+
+        # for damage
+        self.damaged = False
+        self.damaged_count = 0
+        self.elemental = elemental
+
+        # health
+        self.health = 20
+
+        # for death
+        self.visible = True
+
+    def move(self):
+        if self.vel > 0:
+            self.direction = "left"
+            if self.rect.x < self.path[1] + self.vel:
+                self.rect.x += self.vel
+            else:
+                self.vel = self.vel*-1
+                self.rect.x += self.vel
+                self.animation_count = 0
+        else:
+            self.direction = "right"
+            if self.rect.x > self.path[0] - self.vel:
+                self.rect.x += self.vel
+            else:
+                self.vel  = self.vel * -1
+                self.rect.x += self.vel
+                self.animation_count = 0
+
+    def dead(self):
+        self.visible = False
+        self.rect = pygame.Rect(0,0, 0,0) # for collision ending
+
+    def update_sprite(self):
+        #super().update_sprite()
+        sprite_sheet = "Run"
+        if self.vel != 0:
+            sprite_sheet = "Run"
+        if self.damaged:
+            sprite_sheet = "Hit"
+            self.vel = 0
+
+        sprite_sheet_name = sprite_sheet + "_" + self.direction
+        sprites = self.SPRITES[sprite_sheet_name]
+        sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
+        self.sprite = sprites[sprite_index]
+        self.animation_count += 1
+        self.update()
+
+    def update(self):
+        self.rect = self.sprite.get_rect(topleft = (self.rect.x, self.rect.y))
+        self.mask = pygame.mask.from_surface(self.sprite)
+
+    def draw(self, win, offset_x):
+        if self.visible:
+            win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
+
+    def loop(self, fps):
+        self.move()
+        if self.damaged:
+            self.damaged_count += 1
+        if self.damaged_count > fps:
+            self.damaged = False
+            self.damaged_count = 0
+            self.vel = 3
+        if self.health <= 0:
+            self.dead()
+        self.update_sprite()
+
+
+# 32*32
+class WaterBird(Enemy):
+    GRAVITY = 1
+    SPRITES = load_sprite_sheets("BlueBird","",32, 30,True)
+    ANIMATION_DELAY = 3
+
+    def __init__(self, x, y, width, height, end, elemental):
+        super().__init__(x, y, width, height, end, elemental)
+        self.rect = pygame.Rect(x, y, width, height)
+        self.name = "enemy"
+        self.mask = None
+        self.direction = "left"
+        self.path = [x, end]
+        self.vel = 3
+        self.animation_count = 0
+
+        # for damage
+        self.damaged = False
+        self.damaged_count = 0
+        self.elemental = elemental
+
+        # health
+        self.health = 5
+
+        # for death
+        self.visible = True
+
+    def update_sprite(self):
+        #super().update_sprite()
+        sprite_sheet = "Flying"
+        if self.vel != 0:
+            sprite_sheet = "Flying"
+        if self.damaged:
+            sprite_sheet = "Hit"
+            self.vel = 0
+
+        sprite_sheet_name = sprite_sheet + "_" + self.direction
+        sprites = self.SPRITES[sprite_sheet_name]
+        sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
+        self.sprite = sprites[sprite_index]
+        self.animation_count += 1
+        self.update()
+
+
+#======================================Enemy====================================================================
 
 class Elements(object):
     def __init__(self, x,y, width, color):
@@ -284,9 +434,8 @@ class Elements(object):
     
     def draw(self,win,offset_x):
         pygame.draw.rect(win, self.color, (self.x-offset_x, self.y, self.width, self.width))
-        #print(self.x)
 
-
+#======================================Block and obstacle=======================================================
 class Object(pygame.sprite.Sprite):
     def __init__(self, x,y,width,height, name = None):
         super().__init__()
@@ -298,6 +447,7 @@ class Object(pygame.sprite.Sprite):
     
     def draw(self, win, offset_x):
         win.blit(self.image, (self.rect.x - offset_x, self.rect.y))
+
 
 class Block(Object):
     def __init__(self,x,y,size):
@@ -336,8 +486,97 @@ class Saw(Object):
         if self.animation_count // self.ANIMATION_DELAY > len(sprites):
             self.animation_count = 0
 
+# 42*42
+class RockHead(Object):
+    ANIMATION_DELAY = 10
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y, width, height, "RockHead")
+        self.rockhead = load_sprite_sheets("Traps","RockHead",width,height)
+        self.image = self.rockhead["Blink"][0]
+        self.mask = pygame.mask.from_surface(self.image)
+        self.animation_count = 0
+        self.animation_name = "Blink"
 
+        #for move
+        self.path = [y,HEIGHT - 96 - 42]
+        self.vel = 10
+        self.delaytime = 0
+        self.direction = "up"
+
+    def Fall(self):
+        self.animation_name = "BottomHit"
+
+    def Idle(self):
+        self.animation_name = "Blink"
+
+    def move(self):
+        if self.vel > 0:
+            self.direction = "down"
+            self.Fall()
+            if self.rect.y+42 < self.path[1] + self.vel:
+                self.rect.y += self.vel
+            else:
+                self.vel = self.vel*-1
+                self.rect.y += self.vel
+                self.animation_count = 0
+        else:
+            self.direction = "up"
+            self.Idle()
+            if self.rect.y > self.path[0] - self.vel:
+                self.rect.y += self.vel
+            else:
+                self.vel  = self.vel * -1
+                self.rect.y += self.vel
+                self.animation_count = 0
+
+    def loop(self,fps):
+        self.move()
+        sprites = self.rockhead[self.animation_name]
+        sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
+        self.image = sprites[sprite_index]
+        self.animation_count += 1
+
+        self.rect = self.image.get_rect(topleft = (self.rect.x, self.rect.y))
+        self.mask = pygame.mask.from_surface(self.image)
+
+        if self.animation_count // self.ANIMATION_DELAY > len(sprites):
+            self.animation_count = 0
+    
+        # for move obstacle
+        # if self.delaytime < fps:
+        #     self.delaytime += 1
+        # if self.delaytime > fps:
+        #     self.delaytime = 0
+
+class HealthItem(Object):
+    ANIMATION_DELAY = 3
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y, width, height, "Melon")
+        self.melon = load_sprite_sheets("Items","Fruits",width, height)
+        self.image = self.melon["Melon"][0]
+        self.mask = pygame.mask.from_surface(self.image)
+        self.animation_count = 0
+        self.animation_name = "Melon"
+
+    def idle(self):
+        self.animation_name = "Melon"
+
+    def loop(self):
+        sprites = self.melon[self.animation_name]
+        sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
+        self.image = sprites[sprite_index]
+        self.animation_count += 1
+        self.rect = self.image.get_rect(topleft = (self.rect.x, self.rect.y))
+        self.mask = pygame.mask.from_surface(self.image)
+        if self.animation_count // self.ANIMATION_DELAY > len(sprites):
+            self.animation_count = 0
+
+        
+#=========================================Block and obstacle====================================================
+
+#=========================================Projectile and Skill====================================================
 class Projectile(object):
+    BULLETS = []
     def __init__ (self, x,y,radius,color,facing):
         self.x = x
         self.y = y
@@ -349,14 +588,44 @@ class Projectile(object):
     def draw(self, win, offset):
         pygame.draw.circle(win, self.color, (self.x-offset, self.y), self.radius)
 
+    # def append_bullet(self,player):
+    #     if player.direction == "left":
+    #         facing = -1
+    #     else:
+    #         facing = 1
+    #     if player.current_attack_gage > 0:
+    #         bullet = Projectile(player.rect.centerx, player.rect.centery, 6, (0,0,0), facing)                    
+    #         self.BULLETS.append(bullet)
+    #         player.current_attack_gage -= 1
+    #     if player.current_attack_gage == 0:
+    #         player.can_attack = False
+
+    # def attack_monster(self, player, enemy):
+    #     for b in self.BULLETS:
+    #         if b.x > player.rect.centerx - 700 and b.x < player.rect.centerx + 700:
+    #             b.x += b.velocity
+    #             #print(f"{b.x}")
+    #             #print(f"{b.y}, {enemy1.rect.centery}")
+    #             for i in range(len(enemy)):
+    #                 if (b.x >= enemy[i].rect.centerx-5 and b.x <= enemy[i].rect.centerx + 5) and (b.y >= enemy[i].rect.centery-5 and b.y <= enemy[i].rect.centery + 5):
+    #                     #print(f"{enemy1.rect.x}, {b.x}")
+    #                     enemy[i].damaged = True
+    #                     enemy[i].health -= 2 # bullet 이랑 skill damage를 적용해야 함!! 지금은 그냥 임시 숫자임
+    #                     #print(f"{enemy1.health}")
+    #                     self.BULLETS.pop(self.BULLETS.index(b))
+    #                 else:
+    #                     enemy[i].damaged = False
+    #         else:
+    #             self.BULLETS.pop(self.BULLETS.index(b))
 
 # class FireProjectile(Projectile):
 #     def __init__(self, x, y, radius, color, facing):
 #         super().__init__(x, y, radius, color, facing)
 #         self.type = "fire"
 #         self.damage = 10
+#=========================================Projectile and Skill====================================================
 
-
+#=========================================global function====================================================
 def get_background(name):
     image = pygame.image.load(join("img", "Background", name))
     _, _, width, height = image.get_rect()
@@ -370,7 +639,7 @@ def get_background(name):
     return tiles, image
 
 
-def draw(window, background, bg_image, player, objects, offset_x, bullets, enemy1, elements):
+def draw(window, background, bg_image, player, objects, offset_x, bullets, elements, enemys):
     for tile in background:
         window.blit(bg_image, tile)
 
@@ -383,20 +652,34 @@ def draw(window, background, bg_image, player, objects, offset_x, bullets, enemy
     for element in elements:
         element.draw(window, offset_x)
 
+    for enemy in enemys:
+        enemy.draw(window,offset_x)
+
+    # health gage
     pygame.draw.rect(window, (255,0,0), (10,10, player.current_health, 25))
     pygame.draw.rect(window, (255,255,255), (10,10, player.healt_bar_length, 25), 4)
 
+    # normal attack
     pygame.draw.rect(window, (0,0,0), (10,35, player.current_attack_gage * 20, 25))
     pygame.draw.rect(window, (255,255,255), (10,35, player.attack_gage * 20, 25), 4)
 
-    pygame.draw.rect(window, (200,100,0), (10,60, player.current_skill1_gage * 20, 25))
+    # grass 
+    pygame.draw.rect(window, (0,255,0), (10,60, player.current_skill1_gage * 20, 25))
     pygame.draw.rect(window, (255,255,255), (10,60, player.skill1_gage * 20, 25), 4)
 
-    player.draw(window, offset_x)
-    enemy1.draw(window, offset_x)
-    
-    pygame.display.update()
+    # fire
+    pygame.draw.rect(window, (200,100,0), (10,85, player.current_skill2_gage * 20, 25))
+    pygame.draw.rect(window, (255,255,255), (10,85, player.skill2_gage * 20, 25), 4)
 
+    # water
+    pygame.draw.rect(window, (0,0,255), (10,110, player.current_skill3_gage * 20, 25))
+    pygame.draw.rect(window, (255,255,255), (10,110, player.skill3_gage * 20, 25), 4)
+
+    player.draw(window, offset_x)
+    #enemy1.draw(window, offset_x)
+    #enemy2.draw(window, offset_x)
+
+    pygame.display.update()
 
 
 def handle_vertical_collision(player, objects, dy):
@@ -450,6 +733,12 @@ def handle_move(player, objects):
         if obj and obj.name == "enemy":
             player.make_hit(20)
 
+        if obj and obj.name == "RockHead":
+            player.make_hit(10)
+        
+        if obj and obj.name == "Melon":
+            player.get_health(10)
+
 
 def main(window):
     clock = pygame.time.Clock()
@@ -458,41 +747,57 @@ def main(window):
     block_size = 96
 
     player = Player(100,100,50,50)
-    enemy1 = Enemy(400, HEIGHT - block_size- 64, 32, 32, 1000)
 
-    saw = Saw(100, HEIGHT - block_size - 76, 38, 76)
+    enemy1 = Enemy(400, HEIGHT - block_size- 64, 32, 32, 700, "grass")
+    enemy2 = FireEnemy(1000, HEIGHT - block_size - 36-18, 32,30, 1000+400, "fire")
+    enemy3 = WaterBird(200, HEIGHT - block_size*4-32, 32,32,400+100,"water")
+    enemys = [enemy1,enemy2,enemy3]
+
+    # enemys.append(enemy1)
+    # enemys.append(enemy2)
+
+    saw = Saw(96*10, HEIGHT - block_size - 76, 38, 76)
     saw.on()
+
+    rock_head = RockHead(400, HEIGHT - block_size - 42*10, 42, 42)
+    rock_head.Idle()
+
+    # 아이템 리스트에 넣고 관리하기
+    items = []
+    health_item01 = HealthItem(block_size * 3, HEIGHT - block_size*4 -32- 16 , 32, 32)
+    health_item01.idle()
+    items.append(health_item01)
 
     #blocks = [Block(0, HEIGHT-block_size, block_size)]
     floor = [Block(i*block_size, HEIGHT - block_size, block_size) for i in range(-WIDTH//block_size, WIDTH * 2 //block_size)]
 
-    objects = [*floor, Block(0, HEIGHT - block_size*2, block_size), Block(block_size * 3, HEIGHT - block_size*4, block_size), saw, enemy1] 
+    objects = [*floor, Block(-block_size, HEIGHT - block_size*3, block_size) ,Block(0, HEIGHT - block_size*2, block_size), Block(block_size * 3, HEIGHT - block_size*4, block_size), 
+                saw, rock_head, health_item01, enemys[0],enemys[1],enemys[2]] 
 
     offset_x = 0
     scroll_area_width = 200
 
     bullets = []
     elements = [] # for increase skill gage / but now for ammo
+
     element_draw_count = 0
 
     run = True
+
     while(run):
         clock.tick(FPS)
         
-        # for bullet    
         for b in bullets:
             if b.x > player.rect.centerx - 700 and b.x < player.rect.centerx + 700:
                 b.x += b.velocity
-                #print(f"{b.x}")
-                #print(f"{b.y}, {enemy1.rect.centery}")
-                if (b.x >= enemy1.rect.centerx-5 and b.x <= enemy1.rect.centerx + 5) and (b.y >= enemy1.rect.centery-5 and b.y <= enemy1.rect.centery + 5):
-                    #print(f"{enemy1.rect.x}, {b.x}")
-                    enemy1.damaged = True
-                    enemy1.health -= 2 # bullet 이랑 skill damage를 적용해야 함!! 지금은 그냥 임시 숫자임
-                    #print(f"{enemy1.health}")
-                    bullets.pop(bullets.index(b))
-                else:
-                    enemy1.damaged = False
+                for i in range(len(enemys)):
+                    if (b.x >= enemys[i].rect.centerx-10 and b.x <= enemys[i].rect.centerx + 10) and (b.y >= enemys[i].rect.centery-10 and b.y <= enemys[i].rect.centery + 10):
+                        enemys[i].damaged = True
+                        enemys[i].health -= 2 # bullet 이랑 skill damage를 적용해야 함!! 지금은 그냥 임시 숫자임
+                        #print(f"{enemy1.health}")
+                        bullets.pop(bullets.index(b))
+                    else:
+                        enemys[i].damaged = False
             else:
                 bullets.pop(bullets.index(b))
     
@@ -500,19 +805,32 @@ def main(window):
         for e in elements:
             if (player.rect.centerx >= e.x-5 and player.rect.centerx <= e.x+5) and (player.rect.centery >= e.y-5 and player.rect.centery <= e.y+5):
             #if player.rect.centerx == e.x:
+                if e.color == "green":
+                    player.current_skill1_gage += 5
+                if e.color == "red":
+                    player.current_skill2_gage += 5
+                if e.color == "blue":
+                    player.current_skill3_gage += 5
+
                 player.current_attack_gage += 5
                 elements.pop(elements.index(e))
 
                 # gage 넘어가지 않게 처리
-                if player.current_attack_gage > 10:
-                    player.current_attack_gage = 10
+                if player.current_attack_gage > 20:
+                    player.current_attack_gage = 20
 
         # item spawn
-        if enemy1.health <= 0:
-            if element_draw_count == 0:
-                element = Elements(enemy1.rect.centerx, enemy1.rect.centery, 20, "black")
-                elements.append(element)
-                element_draw_count += 1
+        for i in range(len(enemys)):
+            if enemys[i].health <= 0:
+                if element_draw_count == 0:
+                    if enemys[i].elemental == "grass":
+                        element = Elements(enemys[i].rect.centerx, HEIGHT - block_size - 30, 30, "green")
+                    if enemys[i].elemental == "fire":
+                        element = Elements(enemys[i].rect.centerx, HEIGHT - block_size - 30, 30, "red")
+                    if enemys[i].elemental == "water":
+                        element = Elements(enemys[i].rect.centerx, HEIGHT - block_size - 30, 30, "blue")
+
+                    elements.append(element)
 
 
         for event in pygame.event.get():
@@ -528,6 +846,7 @@ def main(window):
                 # attack
                 if event.key == pygame.K_a:
                     player.attack()
+                
                     if player.direction == "left":
                         facing = -1
                     else:
@@ -536,18 +855,22 @@ def main(window):
                     if player.current_attack_gage > 0:
                         bullet = Projectile(player.rect.centerx, player.rect.centery, 6, (0,0,0), facing)                    
                         bullets.append(bullet)
-                        #print(f"player : {player.rect.centerx}, {player.rect.centery}")
-                        #print(f"bullet : {bullet.x}, {bullet.y}")
                         player.current_attack_gage -= 1
                     if player.current_attack_gage == 0:
                         player.can_attack = False
             
+        
         player.loop(FPS)
-        enemy1.loop(FPS)
-        saw.loop()
+        enemys[0].loop(FPS)
+        enemys[1].loop(FPS)
+        enemys[2].loop(FPS)
 
+        saw.loop()
+        rock_head.loop(FPS)
+        health_item01.loop()
         handle_move(player, objects)
-        draw(window, background, bg_image, player,objects, offset_x, bullets, enemy1, elements)
+
+        draw(window, background, bg_image, player,objects, offset_x, bullets, elements,enemys)
 
         if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
             offset_x += player.x_vel
