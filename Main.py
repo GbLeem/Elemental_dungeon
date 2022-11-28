@@ -84,11 +84,11 @@ class Player(pygame.sprite.Sprite):
 
         # for skill 
         self.skill1_gage = 10
-        self.current_skill1_gage = 0
+        self.current_skill1_gage = 10
         self.skill2_gage = 10
-        self.current_skill2_gage = 0
+        self.current_skill2_gage = 10
         self.skill3_gage = 10
-        self.current_skill3_gage = 0
+        self.current_skill3_gage = 10
         
     def jump(self):
         self.y_vel = -self.GRAVITY * 8
@@ -432,7 +432,110 @@ class WaterBird(Enemy):
         if self.health <= 0:
             self.dead()
         self.update_sprite()
+
+# 34*44
+class FireBunny(Enemy):
+    GRAVITY = 1
+    SPRITES = load_sprite_sheets("Bunny","",34, 44,True)
+    ANIMATION_DELAY = 3
+
+    def __init__(self, x, y, width, height, end, elemental):
+        super().__init__(x, y, width, height, end, elemental)
+        self.rect = pygame.Rect(x, y, width, height)
+        self.name = "enemy"
+        self.mask = None
+        self.direction = "left"
+        self.path = [x, end]
+        self.vel = 3
+        self.animation_count = 0
+
+        self.health = 5
+
+    def update_sprite(self):
+        sprite_sheet = "Run"
+        if self.vel != 0:
+            sprite_sheet = "Run"
+        if self.damaged:
+            sprite_sheet = "Hit"
+            self.vel = 0
+
+        sprite_sheet_name = sprite_sheet + "_" + self.direction
+        sprites = self.SPRITES[sprite_sheet_name]
+        sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
+        self.sprite = sprites[sprite_index]
+        self.animation_count += 1
+        self.update()
 #======================================Enemy====================================================================
+
+#======================================BOSS====================================================================
+# 250 * 250
+class BOSS(Enemy):
+    GRAVITY = 1
+    SPRITES = load_sprite_sheets("Boss","",250, 250,True)
+    ANIMATION_DELAY = 5
+
+    def __init__(self, x, y, width, height, end, elemental):
+        super().__init__(x, y, width, height, end, elemental)
+        self.rect = pygame.Rect(x, y, width, height)
+        self.name = "enemy"
+        self.mask = None
+        self.direction = "left"
+        self.path = [x, end]
+        self.vel = 2
+        self.animation_count = 0
+        self.health = 5
+        
+        #for attack
+        self.can_attack = False 
+
+    def attack(self):
+        self.can_attack = True
+        self.animation_count = 0
+
+    def update_sprite(self):
+        sprite_sheet = "Idle"
+        if self.vel != 0:
+            sprite_sheet = "Run"
+        if self.damaged:
+            sprite_sheet = "Hit"
+            self.vel = 0
+        if self.can_attack:
+            sprite_sheet = "Attack1"
+
+        sprite_sheet_name = sprite_sheet + "_" + self.direction
+        sprites = self.SPRITES[sprite_sheet_name]
+        sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
+        self.sprite = sprites[sprite_index]
+        self.animation_count += 1
+        self.update()
+
+
+    def loop(self, fps):
+        self.move()
+        if self.damaged:
+            self.damaged_count +=1
+
+        if self.damaged_count > fps*0.3:
+            self.damaged = False
+            self.damaged_count = 0
+            self.vel = 3
+
+        if self.health <= 0:
+            self.dead()
+
+        if self.can_attack:
+            self.attack_count += 1
+            if self.attack_count > fps*0.2:
+                self.can_attack = False
+                self.attack_count = 0
+
+        self.update_sprite()
+
+
+#======================================BOSS====================================================================
+
+
+
 
 class Elements(object):
     def __init__(self, x,y, width, color):
@@ -724,8 +827,13 @@ def main(window):
 
     enemy1 = Enemy(400, HEIGHT - block_size- 64, 32, 32, 700, "grass")
     enemy2 = FireEnemy(1000, HEIGHT - block_size - 36-18, 32,30, 1000+400, "fire")
-    enemy3 = WaterBird(200, HEIGHT - block_size*4-32, 32,32,400+100,"water")
-    enemys = [enemy1,enemy2,enemy3]
+    enemy3 = WaterBird(200, HEIGHT - block_size*4-32, 32, 32, 400+100,"water")
+    enemy4 = FireBunny(96, HEIGHT - block_size - 34*2-17, 32, 32, 196,"fire")
+
+    boss = BOSS(1400, HEIGHT - block_size - 250 - 32, 32, 32, 1400 + 500, "fire")
+
+    enemys = [enemy1,enemy2,enemy3,enemy4,boss]
+
 
     # enemys.append(enemy1)
     # enemys.append(enemy2)
@@ -746,7 +854,7 @@ def main(window):
     floor = [Block(i*block_size, HEIGHT - block_size, block_size) for i in range(-WIDTH//block_size, WIDTH * 2 //block_size)]
 
     objects = [*floor, Block(-block_size, HEIGHT - block_size*3, block_size) ,Block(0, HEIGHT - block_size*2, block_size), Block(block_size * 3, HEIGHT - block_size*4, block_size), 
-                saw, rock_head, health_item01, enemys[0],enemys[1],enemys[2]] 
+                saw, rock_head, health_item01, enemys[0],enemys[1],enemys[2], enemys[3]] 
 
     offset_x = 0
     scroll_area_width = 200
@@ -898,6 +1006,8 @@ def main(window):
         enemys[0].loop(FPS)
         enemys[1].loop(FPS)
         enemys[2].loop(FPS)
+        enemys[3].loop(FPS)
+        enemys[4].loop(FPS)
 
         saw.loop()
         rock_head.loop(FPS)
