@@ -421,7 +421,17 @@ class WaterBird(Enemy):
         self.animation_count += 1
         self.update()
 
-
+    def loop(self, fps):
+        self.move()
+        if self.damaged:
+            self.damaged_count +=1
+        if self.damaged_count > fps*0.3:
+            self.damaged = False
+            self.damaged_count = 0
+            self.vel = 3
+        if self.health <= 0:
+            self.dead()
+        self.update_sprite()
 #======================================Enemy====================================================================
 
 class Elements(object):
@@ -587,42 +597,6 @@ class Projectile(object):
 
     def draw(self, win, offset):
         pygame.draw.circle(win, self.color, (self.x-offset, self.y), self.radius)
-
-    # def append_bullet(self,player):
-    #     if player.direction == "left":
-    #         facing = -1
-    #     else:
-    #         facing = 1
-    #     if player.current_attack_gage > 0:
-    #         bullet = Projectile(player.rect.centerx, player.rect.centery, 6, (0,0,0), facing)                    
-    #         self.BULLETS.append(bullet)
-    #         player.current_attack_gage -= 1
-    #     if player.current_attack_gage == 0:
-    #         player.can_attack = False
-
-    # def attack_monster(self, player, enemy):
-    #     for b in self.BULLETS:
-    #         if b.x > player.rect.centerx - 700 and b.x < player.rect.centerx + 700:
-    #             b.x += b.velocity
-    #             #print(f"{b.x}")
-    #             #print(f"{b.y}, {enemy1.rect.centery}")
-    #             for i in range(len(enemy)):
-    #                 if (b.x >= enemy[i].rect.centerx-5 and b.x <= enemy[i].rect.centerx + 5) and (b.y >= enemy[i].rect.centery-5 and b.y <= enemy[i].rect.centery + 5):
-    #                     #print(f"{enemy1.rect.x}, {b.x}")
-    #                     enemy[i].damaged = True
-    #                     enemy[i].health -= 2 # bullet 이랑 skill damage를 적용해야 함!! 지금은 그냥 임시 숫자임
-    #                     #print(f"{enemy1.health}")
-    #                     self.BULLETS.pop(self.BULLETS.index(b))
-    #                 else:
-    #                     enemy[i].damaged = False
-    #         else:
-    #             self.BULLETS.pop(self.BULLETS.index(b))
-
-# class FireProjectile(Projectile):
-#     def __init__(self, x, y, radius, color, facing):
-#         super().__init__(x, y, radius, color, facing)
-#         self.type = "fire"
-#         self.damage = 10
 #=========================================Projectile and Skill====================================================
 
 #=========================================global function====================================================
@@ -639,7 +613,7 @@ def get_background(name):
     return tiles, image
 
 
-def draw(window, background, bg_image, player, objects, offset_x, bullets, elements, enemys):
+def draw(window, background, bg_image, player, objects, offset_x, bullets,elements, enemys):
     for tile in background:
         window.blit(bg_image, tile)
 
@@ -792,24 +766,41 @@ def main(window):
                 b.x += b.velocity
                 for i in range(len(enemys)):
                     if (b.x >= enemys[i].rect.centerx-10 and b.x <= enemys[i].rect.centerx + 10) and (b.y >= enemys[i].rect.centery-10 and b.y <= enemys[i].rect.centery + 10):
+                        if bullet.color == "red":
+                            if enemys[i].elemental == "grass":
+                                enemys[i].health -= 4
+                            elif enemys[i].elemental == "water":
+                                enemys[i].health -= 1
+                        elif bullet.color == "green":
+                            if enemys[i].elemental == "water":
+                                enemys[i].health -= 4
+                            elif enemys[i].elemental == "fire":
+                                enemys[i].health -= 1
+                        elif bullet.color == "blue":
+                            if enemys[i].elemental == "fire":
+                                enemys[i].health -= 4
+                            elif enemys[i].elemental == "grass":
+                                enemys[i].health -= 1
+                        else:
+                            enemys[i].health -= 2 # bullet 이랑 skill damage를 적용해야 함!! 지금은 그냥 임시 숫자임
+                        
                         enemys[i].damaged = True
-                        enemys[i].health -= 2 # bullet 이랑 skill damage를 적용해야 함!! 지금은 그냥 임시 숫자임
-                        #print(f"{enemy1.health}")
                         bullets.pop(bullets.index(b))
                     else:
                         enemys[i].damaged = False
             else:
                 bullets.pop(bullets.index(b))
-    
-        # for getting item
+
+
+        # getting item
         for e in elements:
             if (player.rect.centerx >= e.x-5 and player.rect.centerx <= e.x+5) and (player.rect.centery >= e.y-5 and player.rect.centery <= e.y+5):
             #if player.rect.centerx == e.x:
                 if e.color == "green":
                     player.current_skill1_gage += 5
-                if e.color == "red":
+                elif e.color == "red":
                     player.current_skill2_gage += 5
-                if e.color == "blue":
+                elif e.color == "blue":
                     player.current_skill3_gage += 5
 
                 player.current_attack_gage += 5
@@ -819,7 +810,8 @@ def main(window):
                 if player.current_attack_gage > 20:
                     player.current_attack_gage = 20
 
-        # item spawn
+
+        # item spawn => 한번씩만 만들어야함!
         for i in range(len(enemys)):
             if enemys[i].health <= 0:
                 if element_draw_count == 0:
@@ -858,7 +850,49 @@ def main(window):
                         player.current_attack_gage -= 1
                     if player.current_attack_gage == 0:
                         player.can_attack = False
-            
+                
+                # skill1 grass
+                if event.key == pygame.K_q:
+                    player.attack()
+                    if player.direction == "left":
+                        facing = -1
+                    else:
+                        facing = 1
+
+                    if player.current_skill1_gage > 0:
+                        bullet = Projectile(player.rect.centerx, player.rect.centery, 6, "green", facing)                    
+                        bullets.append(bullet)
+                        player.current_skill1_gage -= 1
+                    if player.current_skill1_gage == 0:
+                        player.can_attack = False
+
+                # skill2 fire
+                if event.key == pygame.K_w:
+                    player.attack()
+                    if player.direction == "left":
+                        facing = -1
+                    else:
+                        facing = 1
+                    if player.current_skill2_gage > 0:
+                        bullet = Projectile(player.rect.centerx, player.rect.centery, 6, "red", facing)                    
+                        bullets.append(bullet)
+                        player.current_skill2_gage -= 1
+                    if player.current_skill2_gage == 0:
+                        player.can_attack = False
+                
+                # skill3 water
+                if event.key == pygame.K_e:
+                    player.attack()
+                    if player.direction == "left":
+                        facing = -1
+                    else:
+                        facing = 1
+                    if player.current_skill3_gage > 0:
+                        bullet = Projectile(player.rect.centerx, player.rect.centery, 6, "blue", facing)                    
+                        bullets.append(bullet)
+                        player.current_skill3_gage -= 1
+                    if player.current_skill3_gage == 0:
+                        player.can_attack = False
         
         player.loop(FPS)
         enemys[0].loop(FPS)
@@ -869,8 +903,8 @@ def main(window):
         rock_head.loop(FPS)
         health_item01.loop()
         handle_move(player, objects)
-
-        draw(window, background, bg_image, player,objects, offset_x, bullets, elements,enemys)
+        
+        draw(window, background, bg_image, player,objects, offset_x,elements, bullets, enemys)
 
         if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
             offset_x += player.x_vel
