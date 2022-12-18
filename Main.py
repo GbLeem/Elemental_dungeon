@@ -1,5 +1,5 @@
 import os
-import random
+from random import *
 import math
 import pygame
 from os import listdir
@@ -14,6 +14,9 @@ BG_COLOR = (255,255,255)
 WIDTH, HEIGHT = 1000, 800
 FPS = 60
 PLAYER_VEL = 5
+block_size = 96
+LEVEL = 1
+
 
 window = pygame.display.set_mode((WIDTH,HEIGHT))
 
@@ -44,11 +47,14 @@ def load_sprite_sheets(dir1, dir2, width, height, direction = False):
 
     return all_sprites
 
-def get_block(size):
+def get_block(size, level):
     path = join("img","tile","Terrain.png")
     image = pygame.image.load(path).convert_alpha()
     surface = pygame.Surface((size,size),pygame.SRCALPHA,32)
-    rect = pygame.Rect(96,0,size,size)# sprite의 top left x,y좌표 
+    if level == 1:
+        rect = pygame.Rect(96,0,size,size)# sprite의 top left x,y좌표 
+    elif level == 2:
+        rect = pygame.Rect(96,64,size,size)
     surface.blit(image,(0,0),rect)
 
     return pygame.transform.scale2x(surface)
@@ -112,7 +118,8 @@ class Player(pygame.sprite.Sprite):
     
     def death(self):
         #pygame.quit()
-        draw_text("You Died", "black", 100,100,window)
+        #draw_text("You Died", "black", 100, 100, window)
+        game_over()
 
     #데미지 입기 + 애니메이션
     def make_hit(self,amount):
@@ -486,21 +493,31 @@ class BOSS(Enemy):
     def __init__(self, x, y, width, height, end, elemental):
         super().__init__(x, y, width, height, end, elemental)
         self.rect = pygame.Rect(x, y, width, height)
-        self.name = "enemy"
+        self.name = "boss"
         self.mask = None
         self.direction = "left"
         self.path = [x, end]
         self.vel = 2
         self.animation_count = 0
-        self.health = 5
+        self.health = 20 # 체력
         
         #for attack
-        self.can_attack = False 
+        self.attack_count1 = 0
+        self.attack_count2 = 0
+        self.can_attack1 = False 
+        self.can_attack2 = False 
+        self.attack1_gage = 0 # 약한 공격
+        self.attack2_gage = 0 # 강한 공격
+        self.attack3_gage = 0 # 분노 공격
+        self.elemental_change = 0
 
     def attack(self):
         self.can_attack = True
         self.animation_count = 0
 
+    def dead(self):
+        game_clear()
+        
     def update_sprite(self):
         sprite_sheet = "Idle"
         if self.vel != 0:
@@ -508,8 +525,12 @@ class BOSS(Enemy):
         if self.damaged:
             sprite_sheet = "Hit"
             self.vel = 0
-        if self.can_attack:
+        if self.can_attack1: #약한 공격
             sprite_sheet = "Attack1"
+            self.vel = 0
+        if self.can_attack2: #강한 공격
+            sprite_sheet = "Attack2"        
+            self.vel = 0
 
         sprite_sheet_name = sprite_sheet + "_" + self.direction
         sprites = self.SPRITES[sprite_sheet_name]
@@ -518,9 +539,39 @@ class BOSS(Enemy):
         self.animation_count += 1
         self.update()
 
+    def weak_attack(self):
+        print("weak")
+        self.attack1_gage = 0
+
+    def strong_attack(self):
+        print("strong")
+        self.attack2_gage = 0
+
+    def mad_attack(self):
+        print("분노 공격!!")
+        self.attack3_gage = 0
+
+
+    def change_mode(self):
+        rnum = randint(1,4)
+        if rnum == 1:
+            self.elemental = "grass"
+        elif rnum == 2:
+            self.elemental = "fire"
+        elif rnum == 3:
+            self.elemental = "water"
+        print(f"elemental Change!! to {self.elemental}")
+
+        self.elemental_change = 0
+
 
     def loop(self, fps):
         self.move()
+        self.elemental_change += 1 #속성 바꾸기
+        self.attack1_gage += 1
+        self.attack2_gage += 1
+        self.attack3_gage += 1   
+
         if self.damaged:
             self.damaged_count +=1
 
@@ -532,11 +583,42 @@ class BOSS(Enemy):
         if self.health <= 0:
             self.dead()
 
-        if self.can_attack:
-            self.attack_count += 1
-            if self.attack_count > fps*0.2:
-                self.can_attack = False
-                self.attack_count = 0
+        # 보스 속성 바꾸기
+        if self.elemental_change > fps * 10:
+            self.change_mode()
+
+        # 보스 투사체 공격-약함
+        if self.attack1_gage > fps * 4:
+            #self.weak_attack()
+            self.can_attack1 = True
+        
+        # 보스 투사체 공격-강함
+        if self.attack2_gage > fps * 10:
+            #self.strong_attack()
+            self.can_attack2 = True
+
+        # 분노 모드
+        if self.health <= 5:
+            print("분노 모드!") # 이때 몬스터 속성 빠르게 바꾸기????
+            self.attack3_gage = 1
+            
+
+        if self.can_attack1:
+            self.attack_count1 += 1
+            if self.attack_count1 > fps*1.2:
+                self.can_attack1 = False
+                self.attack1_gage = 0
+                self.attack_count1 = 0
+                self.vel = 2
+
+        if self.can_attack2:
+            self.attack_count2 += 1
+            if self.attack_count2 > fps*2.2:
+                self.can_attack2 = False
+                self.attack2_gage = 0
+                self.attack_count2 = 0
+                self.vel = 2
+
 
         self.update_sprite()
 
@@ -570,9 +652,9 @@ class Object(pygame.sprite.Sprite):
 
 
 class Block(Object):
-    def __init__(self,x,y,size):
+    def __init__(self,x,y,size,level):
         super().__init__(x,y,size,size)
-        block = get_block(size)
+        block = get_block(size,level)
         self.image.blit(block, (0,0))
         self.mask = pygame.mask.from_surface(self.image)
 
@@ -649,7 +731,7 @@ class RockHead(Object):
                 self.rect.y += self.vel
                 self.animation_count = 0
 
-    def loop(self,fps):
+    def loop(self):
         self.move()
         sprites = self.rockhead[self.animation_name]
         sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
@@ -662,12 +744,6 @@ class RockHead(Object):
         if self.animation_count // self.ANIMATION_DELAY > len(sprites):
             self.animation_count = 0
     
-        # for move obstacle
-        # if self.delaytime < fps:
-        #     self.delaytime += 1
-        # if self.delaytime > fps:
-        #     self.delaytime = 0
-    
 #=========================================================================================
 
 class HealthItem(Object):
@@ -679,6 +755,7 @@ class HealthItem(Object):
         self.mask = pygame.mask.from_surface(self.image)
         self.animation_count = 0
         self.animation_name = "Melon"
+        self.eat = False
 
     def idle(self):
         self.animation_name = "Melon"
@@ -717,6 +794,7 @@ class Projectile(object):
 #=========================================Projectile and Skill====================================================
 
 #=========================================global function====================================================
+
 def get_background(name):
     image = pygame.image.load(join("img", "Background", name))
     _, _, width, height = image.get_rect()
@@ -736,7 +814,8 @@ def draw_text(string, color,width, height, window):
     pygame.display.flip()
     clock.tick(60)
 
-def draw(window, background, bg_image, player, objects, offset_x, bullets,elements, enemys):
+
+def draw(window, background, bg_image, player, objects, offset_x, bullets,elements, enemys, bossbullets):
     for tile in background:
         window.blit(bg_image, tile)
 
@@ -751,6 +830,9 @@ def draw(window, background, bg_image, player, objects, offset_x, bullets,elemen
 
     for enemy in enemys:
         enemy.draw(window,offset_x)
+
+    for bullet in bossbullets:
+        bullet.draw(window, offset_x)
 
     # health gage
     pygame.draw.rect(window, (255,0,0), (10,10, player.current_health, 25))
@@ -773,8 +855,6 @@ def draw(window, background, bg_image, player, objects, offset_x, bullets,elemen
     pygame.draw.rect(window, (255,255,255), (10,110, player.skill3_gage * 20, 25), 4)
 
     player.draw(window, offset_x)
-    #enemy1.draw(window, offset_x)
-    #enemy2.draw(window, offset_x)
 
     pygame.display.update()
 
@@ -835,28 +915,25 @@ def handle_move(player, objects):
         
         if obj and obj.name == "Melon":
             player.get_health(10)
+            obj.eat = True
+
+        if obj and obj.name == "boss":
+            print("boss hit!!")
 
 
-def main(window):
-    #clock = pygame.time.Clock()
+#=========================================make level 1====================================================
+def make_level_1():
     background, bg_image = get_background("Yellow.png")
 
-    block_size = 96
 
-    player = Player(100,100,50,50)
+    #player = Player(100,100,50,50)
 
     enemy1 = Enemy(400, HEIGHT - block_size- 64, 32, 32, 700, "grass")
     enemy2 = FireEnemy(1000, HEIGHT - block_size - 36-18, 32,30, 1000+400, "fire")
     enemy3 = WaterBird(200, HEIGHT - block_size*4-32, 32, 32, 400+100,"water")
     enemy4 = FireBunny(96, HEIGHT - block_size - 34*2-17, 32, 32, 196,"fire")
 
-    boss = BOSS(1400, HEIGHT - block_size - 250 - 32, 32, 32, 1400 + 500, "fire")
-
-    enemys = [enemy1,enemy2,enemy3,enemy4,boss]
-
-
-    # enemys.append(enemy1)
-    # enemys.append(enemy2)
+    enemys = [enemy1,enemy2,enemy3,enemy4]
 
     saw = Saw(96*10, HEIGHT - block_size - 76, 38, 76)
     saw.on()
@@ -870,30 +947,131 @@ def main(window):
     health_item01.idle()
     items.append(health_item01)
 
-    #blocks = [Block(0, HEIGHT-block_size, block_size)]
-    floor = [Block(i*block_size, HEIGHT - block_size, block_size) for i in range(-WIDTH//block_size, WIDTH * 2 //block_size)]
 
-    objects = [*floor, Block(-block_size, HEIGHT - block_size*3, block_size) ,Block(0, HEIGHT - block_size*2, block_size), Block(block_size * 3, HEIGHT - block_size*4, block_size), 
+    obstacles = [] # for obstacle
+    obstacles.append(saw)
+    obstacles.append(rock_head)
+
+
+    floor = [Block(i*block_size, HEIGHT - block_size, block_size,1) for i in range(-WIDTH//block_size, WIDTH * 2 //block_size)]
+
+    objects = [*floor, Block(-block_size, HEIGHT - block_size*3, block_size,1) ,Block(0, HEIGHT - block_size*2, block_size,1), Block(block_size * 3, HEIGHT - block_size*4, block_size,1), 
                 saw, rock_head, health_item01, enemys[0],enemys[1],enemys[2], enemys[3]] 
+
+
+    return background, bg_image, objects, enemys, obstacles
+
+
+
+#=========================================make level 2====================================================
+def make_level_2():
+    background, bg_image = get_background("Gray.png")
+    block_size = 96
+
+    floor = [Block(i*block_size, HEIGHT - block_size, block_size,2) for i in range(-WIDTH//block_size, WIDTH * 2 //block_size)]
+    boss = BOSS(400, HEIGHT - block_size - 250 - 64, 32, 32, 400 + 100, "fire")
+    enemys = [boss]
+    
+    objects = [*floor]
+
+    obstacles = []
+
+    return background, bg_image, objects, enemys, obstacles
+
+##=========================================end scene====================================================
+def game_over():
+    LEVEL = -1
+    background, bg_image = get_background("Green.png")
+    draw_text("game clear", "black", 400, 200, window)
+
+
+def game_clear():
+    LEVLE = -1
+    background, bg_image = get_background("Purple.png")
+    draw_text("game clear", "black", 400, 200, window)
+##=========================================main loop====================================================
+def main(window):
+
+    player = Player(100,100,50,50)
+
+    LEVEL = 2
+    if LEVEL == 1:
+        background, bg_image, objects, enemys,obstacles = make_level_1()
+    elif LEVEL == 2:
+        background, bg_image, objects, enemys,obstacles = make_level_2()        
+
 
     offset_x = 0
     scroll_area_width = 200
 
     bullets = []
     elements = [] # for increase skill gage / but now for ammo
-
-    #element_draw_count = 0
+    bossbullets = [] # for boss attack
 
     run = True
 
     while(run):
         clock.tick(FPS)
         
+        # 보스 투사체 추가
+        if enemys[-1].name == "boss":
+            boss = enemys[-1]
+            cnt = 0
+            # 스킬 방향 체크
+            if player.rect.centerx - boss.rect.centerx < 0:
+                facing = -1
+                boss.direction = "left"
+            else:
+                facing = 1
+                boss.direction = "right"
+
+            if boss.can_attack1:
+                if cnt < 5:
+                    bossbullet = Projectile(boss.rect.centerx, boss.rect.centery, 10, (0,0,0), facing)
+                    cnt += 1
+                    bossbullets.append(bossbullet)
+            if boss.can_attack2: 
+                pass
+
+
+        # 보스 투사체 발사
+        for bb in bossbullets:
+            if bb.x > boss.rect.centerx - 700 and bb.x < boss.rect.centerx + 700:
+                bb.x += bb.velocity
+
+                if bb.x == player.rect.centerx:
+                    bossbullets.pop(bossbullets.index(bb))
+                    player.make_hit(10)
+            else:
+                bossbullets.pop(bossbullets.index(bb))
+
+
         for b in bullets:
             if b.x > player.rect.centerx - 700 and b.x < player.rect.centerx + 700:
                 b.x += b.velocity
                 for i in range(len(enemys)):
-                    if (b.x >= enemys[i].rect.centerx-10 and b.x <= enemys[i].rect.centerx + 10) and (b.y >= enemys[i].rect.centery-10 and b.y <= enemys[i].rect.centery + 10):
+
+                    # 보스 피격처리
+                    if enemys[i].name == "boss":
+                        if (b.x >=enemys[i].rect.centerx-10 and b.x <= enemys[i].rect.centerx + 10):
+                            if enemys[i].elemental == "fire" and b.color == "blue":
+                                enemys[i].health -= 1
+                                #print(f"{b.color}, {enemys[i].elemental}")
+                                enemys[i].damaged = True
+                            elif enemys[i].elemental == "water" and b.color == "green":
+                                enemys[i].health -= 1
+                                #print(f"{b.color}, {enemys[i].elemental}")
+                                enemys[i].damaged = True
+                            elif enemys[i].elemental == "grass" and b.color == "red":
+                                enemys[i].health -= 1
+                                #print(f"{b.color}, {enemys[i].elemental}")
+                                enemys[i].damaged = True
+                            else:
+                                print("not damage")
+
+                            bullets.pop(bullets.index(b))
+
+                    elif (b.x >= enemys[i].rect.centerx-10 and b.x <= enemys[i].rect.centerx + 10) and (b.y >= enemys[i].rect.centery-10 and b.y <= enemys[i].rect.centery + 10):
                         if bullet.color == "red":
                             if enemys[i].elemental == "grass":
                                 enemys[i].health -= 4
@@ -937,6 +1115,12 @@ def main(window):
                 # gage 넘어가지 않게 처리
                 if player.current_attack_gage > 20:
                     player.current_attack_gage = 20
+                if player.current_skill1_gage > 10:
+                    player.current_skill1_gage = 10
+                if player.current_skill2_gage > 10:
+                    player.current_skill2_gage = 10
+                if player.current_skill3_gage > 10:
+                    player.current_skill3_gage = 10
 
 
         # item spawn => 한번씩만 만들어야함!
@@ -946,14 +1130,14 @@ def main(window):
                 if tempX != 0:
                     if enemys[i].elemental == "grass":
                         element = Elements(tempX, HEIGHT - block_size - 30, 30, "green")
-                        tempX = 0
+                        #tempX = 0
                     if enemys[i].elemental == "fire":
                         element = Elements(tempX, HEIGHT - block_size - 30, 30, "red")
-                        tempX = 0
+                        #tempX = 0
                     if enemys[i].elemental == "water":
                         element = Elements(tempX, HEIGHT - block_size - 30, 30, "blue")
-                        tempX = 0
-
+                        #tempX = 0
+                    tempX = 0
                     elements.append(element)
 
 
@@ -1026,22 +1210,22 @@ def main(window):
                     if player.current_skill3_gage == 0:
                         player.can_attack = False
         
+        
         player.loop(FPS)
-        enemys[0].loop(FPS)
-        enemys[1].loop(FPS)
-        enemys[2].loop(FPS)
-        enemys[3].loop(FPS)
-        enemys[4].loop(FPS)
 
-        saw.loop()
-        rock_head.loop(FPS)
-        health_item01.loop()
+        for e in enemys:
+            e.loop(FPS)
+
+        for o in obstacles:
+            o.loop()
+        
         handle_move(player, objects)
         
-        draw(window, background, bg_image, player,objects, offset_x,elements, bullets, enemys)
+        draw(window, background, bg_image, player,objects, offset_x,elements, bullets, enemys, bossbullets)
 
         if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
             offset_x += player.x_vel
+
 
     pygame.quit()
     quit()
