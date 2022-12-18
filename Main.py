@@ -6,6 +6,7 @@ from os import listdir
 from os.path import isfile, join
 
 pygame.init()
+clock = pygame.time.Clock()
 
 pygame.display.set_caption("Platformer")
 
@@ -76,6 +77,9 @@ class Player(pygame.sprite.Sprite):
         self.max_health = 200
         self.healt_bar_length = 200
 
+        # death
+        self.live = True
+
         # for attack
         self.can_attack = False
         self.attack_count = 0
@@ -107,7 +111,8 @@ class Player(pygame.sprite.Sprite):
         self.rect.y += dy
     
     def death(self):
-        pass
+        #pygame.quit()
+        draw_text("You Died", "black", 100,100,window)
 
     #데미지 입기 + 애니메이션
     def make_hit(self,amount):
@@ -117,6 +122,7 @@ class Player(pygame.sprite.Sprite):
             self.hit = True
         if self.current_health <=0:
             self.current_health = 0
+            self.live = False
             self.death()
 
     #체력 회복
@@ -198,7 +204,7 @@ class Player(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.sprite)
 
     def draw(self, win, offset_x):
-        #self.sprite = self.SPRITES["Idle_"+ self.direction][0]
+        #if self.live:
         win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
 #======================================Enemy====================================================================
@@ -257,39 +263,42 @@ class Enemy(object):
     #     pass
     
     def update_sprite(self):
-        sprite_sheet = "Idle"
-        if self.vel != 0:
-            sprite_sheet = "Run"
-        if self.damaged:
-            sprite_sheet = "Hit"
-            self.vel = 0
+        if self.visible:
+            sprite_sheet = "Idle"
+            if self.vel != 0:
+                sprite_sheet = "Run"
+            if self.damaged:
+                sprite_sheet = "Hit"
+                self.vel = 0
 
-        sprite_sheet_name = sprite_sheet + "_" + self.direction
-        sprites = self.SPRITES[sprite_sheet_name]
-        sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
-        self.sprite = sprites[sprite_index]
-        self.animation_count += 1
-        self.update()
+            sprite_sheet_name = sprite_sheet + "_" + self.direction
+            sprites = self.SPRITES[sprite_sheet_name]
+            sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
+            self.sprite = sprites[sprite_index]
+            self.animation_count += 1
+            self.update()
     
     def update(self):
-        self.rect = self.sprite.get_rect(topleft = (self.rect.x, self.rect.y))
-        self.mask = pygame.mask.from_surface(self.sprite)
+        if self.visible:
+            self.rect = self.sprite.get_rect(topleft = (self.rect.x, self.rect.y))
+            self.mask = pygame.mask.from_surface(self.sprite)
         
     def draw(self, win, offset_x):
         if self.visible:
             win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
     
     def loop(self, fps):
-        self.move()
-        if self.damaged:
-            self.damaged_count +=1
-        if self.damaged_count > fps:
-            self.damaged = False
-            self.damaged_count = 0
-            self.vel = 3
-        if self.health <= 0:
-            self.dead()
-        self.update_sprite()
+        if self.visible:
+            self.move()
+            if self.damaged:
+                self.damaged_count +=1
+            if self.damaged_count > fps:
+                self.damaged = False
+                self.damaged_count = 0
+                self.vel = 3
+            if self.health <= 0:
+                self.dead()
+            self.update_sprite()
 
 
 # 36*30
@@ -535,8 +544,6 @@ class BOSS(Enemy):
 #======================================BOSS====================================================================
 
 
-
-
 class Elements(object):
     def __init__(self, x,y, width, color):
         super().__init__()
@@ -660,6 +667,8 @@ class RockHead(Object):
         #     self.delaytime += 1
         # if self.delaytime > fps:
         #     self.delaytime = 0
+    
+#=========================================================================================
 
 class HealthItem(Object):
     ANIMATION_DELAY = 3
@@ -684,7 +693,12 @@ class HealthItem(Object):
         if self.animation_count // self.ANIMATION_DELAY > len(sprites):
             self.animation_count = 0
 
-        
+# class bulletItem(Object):
+#     ANIMATION_DEALY = 3
+#     def __init__(self, x, y, width, height):
+#         super().__init__(x, y, width, height)
+#         self.bullet = load_sprite_sheets()
+
 #=========================================Block and obstacle====================================================
 
 #=========================================Projectile and Skill====================================================
@@ -715,6 +729,12 @@ def get_background(name):
 
     return tiles, image
 
+def draw_text(string, color,width, height, window):
+    text = pygame.font.SysFont("arial", 30, True, False)
+    drawtext = text.render(string, True, color)
+    window.blit(drawtext, (width, height))
+    pygame.display.flip()
+    clock.tick(60)
 
 def draw(window, background, bg_image, player, objects, offset_x, bullets,elements, enemys):
     for tile in background:
@@ -818,7 +838,7 @@ def handle_move(player, objects):
 
 
 def main(window):
-    clock = pygame.time.Clock()
+    #clock = pygame.time.Clock()
     background, bg_image = get_background("Yellow.png")
 
     block_size = 96
@@ -862,7 +882,7 @@ def main(window):
     bullets = []
     elements = [] # for increase skill gage / but now for ammo
 
-    element_draw_count = 0
+    #element_draw_count = 0
 
     run = True
 
@@ -922,13 +942,17 @@ def main(window):
         # item spawn => 한번씩만 만들어야함!
         for i in range(len(enemys)):
             if enemys[i].health <= 0:
-                if element_draw_count == 0:
+                tempX = enemys[i].rect.centerx
+                if tempX != 0:
                     if enemys[i].elemental == "grass":
-                        element = Elements(enemys[i].rect.centerx, HEIGHT - block_size - 30, 30, "green")
+                        element = Elements(tempX, HEIGHT - block_size - 30, 30, "green")
+                        tempX = 0
                     if enemys[i].elemental == "fire":
-                        element = Elements(enemys[i].rect.centerx, HEIGHT - block_size - 30, 30, "red")
+                        element = Elements(tempX, HEIGHT - block_size - 30, 30, "red")
+                        tempX = 0
                     if enemys[i].elemental == "water":
-                        element = Elements(enemys[i].rect.centerx, HEIGHT - block_size - 30, 30, "blue")
+                        element = Elements(tempX, HEIGHT - block_size - 30, 30, "blue")
+                        tempX = 0
 
                     elements.append(element)
 
@@ -1024,6 +1048,3 @@ def main(window):
 
 if __name__ == "__main__":
     main(window)
-
-
-# 1:37:29
