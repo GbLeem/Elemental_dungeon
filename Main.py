@@ -770,12 +770,29 @@ class HealthItem(Object):
         if self.animation_count // self.ANIMATION_DELAY > len(sprites):
             self.animation_count = 0
 
-# class bulletItem(Object):
-#     ANIMATION_DEALY = 3
-#     def __init__(self, x, y, width, height):
-#         super().__init__(x, y, width, height)
-#         self.bullet = load_sprite_sheets()
+# 64*64
+class FinalZone(Object):
+    ANIMATION_DELAY = 3
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y, width, height, "final")
+        self.final = load_sprite_sheets("Items","Checkpoints",width, height)
+        self.image = self.final["End"][0]
+        self.mask = pygame.mask.from_surface(self.image)
+        self.animation_count = 0
+        self.animation_name = "End"
 
+    def idle(self):
+        self.animation_name = "End"
+
+    def loop(self):
+        sprites = self.final[self.animation_name]
+        sprite_index = self.animation_count // self.ANIMATION_DELAY % len(sprites)
+        self.image = sprites[sprite_index]
+        self.animation_count += 1
+        self.rect = self.image.get_rect(topleft = (self.rect.x, self.rect.y))
+        self.mask = pygame.mask.from_surface(self.image)
+        if self.animation_count // self.ANIMATION_DELAY > len(sprites):
+            self.animation_count = 0
 #=========================================Block and obstacle====================================================
 
 #=========================================Projectile and Skill====================================================
@@ -940,6 +957,9 @@ def make_level_1():
 
     rock_head = RockHead(400, HEIGHT - block_size - 42*10, 42, 42)
     rock_head.Idle()
+    
+    final = FinalZone(1800, HEIGHT - block_size - 96, 64, 64)
+    final.idle()
 
     # 아이템 리스트에 넣고 관리하기
     items = []
@@ -951,12 +971,12 @@ def make_level_1():
     obstacles = [] # for obstacle
     obstacles.append(saw)
     obstacles.append(rock_head)
-
+    obstacles.append(final)
 
     floor = [Block(i*block_size, HEIGHT - block_size, block_size,1) for i in range(-WIDTH//block_size, WIDTH * 2 //block_size)]
 
     objects = [*floor, Block(-block_size, HEIGHT - block_size*3, block_size,1) ,Block(0, HEIGHT - block_size*2, block_size,1), Block(block_size * 3, HEIGHT - block_size*4, block_size,1), 
-                saw, rock_head, health_item01, enemys[0],enemys[1],enemys[2], enemys[3]] 
+                saw, rock_head, final, health_item01, enemys[0],enemys[1],enemys[2], enemys[3]] 
 
 
     return background, bg_image, objects, enemys, obstacles
@@ -986,20 +1006,23 @@ def game_over():
 
 
 def game_clear():
-    LEVLE = -1
+    LEVEL = -1
     background, bg_image = get_background("Purple.png")
     draw_text("game clear", "black", 400, 200, window)
 ##=========================================main loop====================================================
-def main(window):
+def maingame(window):
 
     player = Player(100,100,50,50)
 
-    LEVEL = 2
+    LEVEL = 1
     if LEVEL == 1:
         background, bg_image, objects, enemys,obstacles = make_level_1()
+        sound = pygame.mixer.Sound("music/xDeviruchi - Minigame .wav")
     elif LEVEL == 2:
         background, bg_image, objects, enemys,obstacles = make_level_2()        
+        sound = pygame.mixer.Sound("music/xDeviruchi - The Icy Cave .wav")
 
+    #sound.play()
 
     offset_x = 0
     scroll_area_width = 200
@@ -1012,7 +1035,12 @@ def main(window):
 
     while(run):
         clock.tick(FPS)
-        
+
+        if obstacles[-1].animation_name == "End":
+            LEVEL = 2
+            # 보스 씬으로 바꾸기
+
+
         # 보스 투사체 추가
         if enemys[-1].name == "boss":
             boss = enemys[-1]
@@ -1222,7 +1250,7 @@ def main(window):
         handle_move(player, objects)
         
         draw(window, background, bg_image, player,objects, offset_x,elements, bullets, enemys, bossbullets)
-
+        
         if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
             offset_x += player.x_vel
 
@@ -1230,5 +1258,12 @@ def main(window):
     pygame.quit()
     quit()
 
+def new_scene(window):
+    pass
+
 if __name__ == "__main__":
-    main(window)
+    if LEVEL > 0:
+        maingame(window)
+    else:
+        new_scene(window)
+        print("ok")
