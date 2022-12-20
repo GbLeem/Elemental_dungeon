@@ -315,7 +315,7 @@ class Enemy(object):
 
     def dead(self):
         self.visible = False
-        self.rect = pygame.Rect(0,0, 0,0) # for collision ending
+        self.rect = pygame.Rect(0, 0, 0, 0) # for collision ending
     
     def update_sprite(self):
         if self.visible:
@@ -621,6 +621,10 @@ class BOSS(Enemy):
         self.attack3_gage = 0 # 분노 공격
         self.elemental_change = 0
 
+        #for skill
+        self.bossbulletcnt = []
+        self.bossskillcnt = []
+
         # death
         self.death = False
         self.death_count = 0
@@ -628,7 +632,19 @@ class BOSS(Enemy):
     def attack(self):
         self.can_attack = True
         self.animation_count = 0
-        
+
+    def make_bullet(self):
+        if self.can_attack1:
+            for i in range(10):
+                bossbullet = Projectile(self.rect.centerx, self.rect.centery, 10, (0,0,0), facing)
+                self.bossbulletcnt[i] = bossbullet
+        elif self.can_attack2:
+            for i in range(20):
+                randx = randint(0, WIDTH)
+                bossskill = Projectile(randx, 0, 20, (255,255,255), 1)
+                self.bossskillcnt[i] = bossskill
+        return self.bossbulletcnt, self.bossskillcnt
+
     def update_sprite(self):
         sprite_sheet = "Idle"
         if self.vel != 0:
@@ -920,23 +936,24 @@ class FinalZone(Object):
 def make_level_1():
     background, bg_image = get_background("Yellow.png")
 
-    enemy1 = Enemy(400, HEIGHT - block_size- 64, 32, 32, 700, "grass")
-    enemy5 = GrassRadish(2500, HEIGHT- block_size-38*2, 32, 32, 2500+300,"grass")
-    enemy9 = GrassRadish(4000, HEIGHT- block_size-38*2, 32, 32, 4000+300,"grass")
+    # 0~1000 / 1000 ~ 2000 / 2000 ~ 3000 / 3000 ~ 4000
+    enemy1 = Enemy(400, HEIGHT - block_size- 64, 32, 32, 400+150, "grass")
+    enemy2 = GrassRadish(700, HEIGHT- block_size-38*2, 32, 32, 700+300,"grass")
+    enemy3 = GrassRadish(800, HEIGHT- block_size-38*2, 32, 32, 800+200,"grass")
 
-    enemy2 = FireEnemy(1000, HEIGHT - block_size - 36-18, 32,30, 1000+400, "fire")
-    enemy4 = FireBunny(2000, HEIGHT - block_size - 34*2-17, 32, 32, 2000+200,"fire")
-    enemy8 = FireBunny(1400, HEIGHT - block_size - 34*2-17, 32, 32, 1400+200,"fire")
-    enemy10 = FireEnemy(4600, HEIGHT - block_size - 36-18, 32,30, 4600+400, "fire")
+    enemy4 = FireEnemy(1200, HEIGHT - block_size - 36-18, 32,30, 1200+100, "fire")
+    enemy5 = FireBunny(1800, HEIGHT - block_size - 34*2-17, 32, 32, 1800+170,"fire")
+    enemy6 = FireBunny(2200, HEIGHT - block_size - 34*2-17, 32, 32, 2200+200,"fire")
+    enemy7 = FireEnemy(2500, HEIGHT - block_size - 36-18, 32,30, 2500+200, "fire")
 
-    enemy3 = WaterBird(700, HEIGHT - block_size*4, 32, 32, 700+100,"water")
-    enemy6 = WaterTurtle(3000,HEIGHT - block_size- 26*2, 32, 32, 3000+500,"water")
-    enemy7 = WaterBird(3300, HEIGHT - block_size*4-32, 32, 32, 3300+100,"water")
+    enemy8 = WaterBird(2600, HEIGHT - block_size*4, 32, 32, 2600+100,"water")
+    enemy9 = WaterTurtle(2800,HEIGHT - block_size- 26*2, 32, 32, 2800+300,"water")
+    enemy10 = WaterBird(3300, HEIGHT - block_size*4-32, 32, 32, 3300+200,"water")
 
 
     enemys = [enemy1,enemy2,enemy3,enemy4,enemy5,enemy6,enemy7,enemy8,enemy9,enemy10]
 
-    saw = Saw(96*10, HEIGHT - block_size - 76, 38, 76)
+    saw = Saw(2500, HEIGHT - block_size - 76, 38, 76)
     saw.on()
     saw2 = Saw(1100, HEIGHT - block_size - 76, 38, 76)
     saw2.on()
@@ -948,20 +965,23 @@ def make_level_1():
     rock_head2 = RockHead(1300, HEIGHT-block_size -42*10, 42,42)
     rock_head2.Idle()
 
-    rock_head2 = RockHead(3000, HEIGHT-block_size -42*10, 42,42)
+    rock_head2 = RockHead(3200, HEIGHT-block_size -42*10, 42,42)
     rock_head2.Idle()
     
-    final = FinalZone(WIDTH*5, HEIGHT - block_size - 108, 64, 64)
-    #final = FinalZone(100, HEIGHT - block_size - 108, 64, 64)
+    final = FinalZone(WIDTH*4 - 150, HEIGHT - block_size - 108, 64, 64)
     final.idle()
 
     # 아이템 리스트에 넣고 관리하기
     items = []
     health_item01 = HealthItem(block_size * 3, HEIGHT - block_size*4 -32- 16 , 32, 32)
     health_item01.idle()
-    health_item02 = HealthItem(3000, HEIGHT - block_size*4 -32- 16 , 32, 32)
+    health_item02 = HealthItem(3000, HEIGHT - block_size*4 - 32- 16 , 32, 32)
     health_item02.idle()
+    health_item03 = HealthItem(2000, HEIGHT - block_size*4 - 32- 16 , 32, 32)
+    health_item03.idle()
     items.append(health_item01)
+    items.append(health_item02)
+    items.append(health_item03)
 
     obstacles = [] # for obstacle
     obstacles.append(saw)
@@ -970,17 +990,17 @@ def make_level_1():
     obstacles.append(rock_head2)
     obstacles.append(final)
 
-    floor = [Block(i*block_size, HEIGHT - block_size, block_size,1) for i in range(-WIDTH//block_size, WIDTH * 5 //block_size)]
+    floor = [Block(i*block_size, HEIGHT - block_size, block_size,1) for i in range(-WIDTH//block_size, WIDTH * 4 //block_size)]
 
     objects = [*floor, Block(-block_size, HEIGHT - block_size*3, block_size,1) ,
                        Block(0, HEIGHT - block_size*2, block_size,1), 
                        Block(block_size * 3, HEIGHT - block_size*4, block_size,1), 
-                       Block(3000, HEIGHT - block_size*4, block_size,1), 
-
-                saw, saw2, rock_head, rock_head2, final, health_item01, 
+                       Block(3000-96, HEIGHT - block_size*2, block_size,1),  # 바닥
+                       Block(2000, HEIGHT - block_size*2, block_size,1),
+                saw, saw2, rock_head, rock_head2, final, health_item01, health_item02, health_item03,
                 enemys[0],enemys[1],enemys[2], enemys[3],enemys[4],enemys[5],enemys[6],enemys[7],enemys[8],enemys[9]] 
 
-    return background, bg_image, objects,enemys,obstacles
+    return background, bg_image, objects,enemys, obstacles
 
 #=========================================make level 2====================================================
 def make_level_2():
@@ -992,7 +1012,6 @@ def make_level_2():
     enemys = [boss]
     
     objects = [*floor]
-    player = Player(100,100,50,50)
     return background, bg_image, objects, enemys
 
 #=========================================draw====================================================
@@ -1111,8 +1130,8 @@ def handle_move(player, objects,game_level, game_over):
 #================================================main loop================================================
 run = True
 restart_button = Button(WIDTH // 2 - 50, HEIGHT // 2 + 100, restart_img)
-start_button = Button(WIDTH // 2 - 350, HEIGHT // 2, start_img)
-exit_button = Button(WIDTH // 2 + 150, HEIGHT // 2, exit_img)
+start_button = Button(WIDTH // 2 - 350, HEIGHT // 2 + 50, start_img)
+exit_button = Button(WIDTH // 2 + 150, HEIGHT // 2 + 50, exit_img)
 
 offset_x = 0
 scroll_area_width = 200
@@ -1129,9 +1148,15 @@ player = Player(100,100,50,50)
 
 while run:
     clock.tick(FPS)
-    window.fill((255,255,255))
-    font = pygame.font.SysFont("arialblack", 70)
-    draw_text("Elemental Dungeon",font,"black", 130, 100, window)
+    window.fill((121,70,99))
+    font1 = pygame.font.SysFont("arialblack", 70)
+    font2 = pygame.font.SysFont("arialblack", 20)
+    font3 = pygame.font.SysFont("arialblack", 30)
+
+    draw_text("Elemental Dungeon",font1,"black", 130, 100, window)
+    draw_text("Control key", font3,"black", WIDTH//2 - 350, HEIGHT -150, window)
+    draw_text("arrow key: move   s: jump", font2,"black", WIDTH//2 - 350, HEIGHT -100, window)
+    draw_text("a: normal attack   q:grass attack   w: fire attack   e: water attack", font2,"black", WIDTH//2 - 350, HEIGHT-50, window)
 
     if main_menu == True:
         if exit_button.draw():
@@ -1147,8 +1172,8 @@ while run:
             if game_level == 2:
                 background, bg_image, objects, enemys = make_level_2()
                 #player.reset(100,100,50,50)
-                #player.rect.x = 100
-                #player.rect.y = 100
+                player.rect.x = 100
+                player.rect.y = 100
                 offset_x = 0
                 game_over = 0
 
@@ -1177,13 +1202,14 @@ while run:
                     boss.direction = "right"
                 if boss.can_attack1:
                     skillcnt +=1
-                    if skillcnt < FPS * 0.2:
+                    if skillcnt < FPS * 0.03:
                         bossbullet = Projectile(boss.rect.centerx, boss.rect.centery, 10, (0,0,0), facing)
                         bossbullets.append(bossbullet)
                         skillcnt = 0
+
                 if boss.can_attack2:
                     skillcnt +=1
-                    if skillcnt < FPS*2:
+                    if skillcnt < FPS*0.4:
                         randx = randint(0, WIDTH)
                         bossskill = Projectile(randx, 0, 20, (255,255,255), 1)
                         bossskills.append(bossskill)
@@ -1206,6 +1232,8 @@ while run:
                         player.make_hit(20)
                 else:
                     bossskills.pop(bossskills.index(ss))
+
+            # character attack to enemy
             for b in bullets:
                 if b.x > player.rect.centerx - 700 and b.x < player.rect.centerx + 700:
                     b.x += b.velocity
@@ -1272,20 +1300,19 @@ while run:
                     if player.current_skill3_gage > 10:
                         player.current_skill3_gage = 10
 
-            # item spawn => 한번씩만 만들어야함!
-            for i in range(len(enemys)):
-                if enemys[i].name == "boss":
+            for e in enemys:
+                if e.name == "boss":
                     if boss.health <= 0:
                         pass
-                        #game_scene()
-                elif enemys[i].health <= 0:
-                    tempX = enemys[i].rect.centerx
+                elif e.health <= 0:
+                    tempX = e.rect.centerx
+                    #enemys.pop()
                     if tempX != 0:
-                        if enemys[i].elemental == "grass":
+                        if e.elemental == "grass":
                             element = Elements(tempX, HEIGHT - block_size - 30, 30, "green")
-                        if enemys[i].elemental == "fire":
+                        if e.elemental == "fire":
                             element = Elements(tempX, HEIGHT - block_size - 30, 30, "red")
-                        if enemys[i].elemental == "water":
+                        if e.elemental == "water":
                             element = Elements(tempX, HEIGHT - block_size - 30, 30, "blue")
                         tempX = 0
                         elements.append(element)            
