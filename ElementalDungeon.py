@@ -8,14 +8,13 @@ clock = pygame.time.Clock()
 FPS = 60
 WIDTH, HEIGHT = 1000, 800
 PLAYER_VEL = 5
-GAME_LEVEL = 1
 block_size = 96
 game_level = 1
 
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Elemental Dungeon")
 
-game_over = 0
+game_over = 1
 main_menu = True
 
 # for button images
@@ -118,6 +117,10 @@ class Player(pygame.sprite.Sprite):
 
     def __init__(self,x,y,width,height):
         super().__init__()
+        self.reset(x,y,width,height)
+
+    #def __init__(self,x,y,width,height):
+    def reset(self,x,y,width,height):
         self.rect = pygame.Rect(x,y,width,height)
         self.x_vel = 0
         self.y_vel = 0
@@ -150,7 +153,7 @@ class Player(pygame.sprite.Sprite):
         self.current_skill2_gage = 10
         self.skill3_gage = 10
         self.current_skill3_gage = 10
-        
+
     def jump(self):
         self.y_vel = -self.GRAVITY * 8
         self.animation_count = 0
@@ -697,7 +700,6 @@ class BOSS(Enemy):
             if self.death_count > fps*0.3:
                 print("DONE")
                 
-
         # 보스 속성 바꾸기
         if self.elemental_change > fps * 10:
             self.change_mode()
@@ -737,8 +739,6 @@ class BOSS(Enemy):
 
 
         self.update_sprite()
-
-
 #=========================================Projectile class===================================================
 class Projectile(object):
     BULLETS = []
@@ -917,18 +917,24 @@ class FinalZone(Object):
         if self.animation_count // self.ANIMATION_DELAY > len(sprites):
             self.animation_count = 0
 #================================================make level================================================
-
 def make_level_1():
     background, bg_image = get_background("Yellow.png")
 
     enemy1 = Enemy(400, HEIGHT - block_size- 64, 32, 32, 700, "grass")
-    enemy2 = FireEnemy(1000, HEIGHT - block_size - 36-18, 32,30, 1000+400, "fire")
-    enemy3 = WaterBird(200, HEIGHT - block_size*4-32, 32, 32, 400+100,"water")
-    enemy4 = FireBunny(2000, HEIGHT - block_size - 34*2-17, 32, 32, 2000+200,"fire")
     enemy5 = GrassRadish(2500, HEIGHT- block_size-38*2, 32, 32, 2500+300,"grass")
-    enemy6 = WaterTurtle(3000,HEIGHT - block_size- 26*2, 32, 32, 3000+500,"water")
+    enemy9 = GrassRadish(4000, HEIGHT- block_size-38*2, 32, 32, 4000+300,"grass")
 
-    enemys = [enemy1,enemy2,enemy3,enemy4,enemy5,enemy6]
+    enemy2 = FireEnemy(1000, HEIGHT - block_size - 36-18, 32,30, 1000+400, "fire")
+    enemy4 = FireBunny(2000, HEIGHT - block_size - 34*2-17, 32, 32, 2000+200,"fire")
+    enemy8 = FireBunny(1400, HEIGHT - block_size - 34*2-17, 32, 32, 1400+200,"fire")
+    enemy10 = FireEnemy(4600, HEIGHT - block_size - 36-18, 32,30, 4600+400, "fire")
+
+    enemy3 = WaterBird(700, HEIGHT - block_size*4, 32, 32, 700+100,"water")
+    enemy6 = WaterTurtle(3000,HEIGHT - block_size- 26*2, 32, 32, 3000+500,"water")
+    enemy7 = WaterBird(3300, HEIGHT - block_size*4-32, 32, 32, 3300+100,"water")
+
+
+    enemys = [enemy1,enemy2,enemy3,enemy4,enemy5,enemy6,enemy7,enemy8,enemy9,enemy10]
 
     saw = Saw(96*10, HEIGHT - block_size - 76, 38, 76)
     saw.on()
@@ -941,16 +947,21 @@ def make_level_1():
 
     rock_head2 = RockHead(1300, HEIGHT-block_size -42*10, 42,42)
     rock_head2.Idle()
+
+    rock_head2 = RockHead(3000, HEIGHT-block_size -42*10, 42,42)
+    rock_head2.Idle()
     
     final = FinalZone(WIDTH*5, HEIGHT - block_size - 108, 64, 64)
+    #final = FinalZone(100, HEIGHT - block_size - 108, 64, 64)
     final.idle()
 
     # 아이템 리스트에 넣고 관리하기
     items = []
     health_item01 = HealthItem(block_size * 3, HEIGHT - block_size*4 -32- 16 , 32, 32)
     health_item01.idle()
+    health_item02 = HealthItem(3000, HEIGHT - block_size*4 -32- 16 , 32, 32)
+    health_item02.idle()
     items.append(health_item01)
-
 
     obstacles = [] # for obstacle
     obstacles.append(saw)
@@ -964,12 +975,10 @@ def make_level_1():
     objects = [*floor, Block(-block_size, HEIGHT - block_size*3, block_size,1) ,
                        Block(0, HEIGHT - block_size*2, block_size,1), 
                        Block(block_size * 3, HEIGHT - block_size*4, block_size,1), 
-                saw, saw2, rock_head, rock_head2, final, health_item01, 
-                enemys[0],enemys[1],enemys[2], enemys[3],enemys[4],enemys[5]] 
+                       Block(3000, HEIGHT - block_size*4, block_size,1), 
 
-    # objects = [*floor, Block(-block_size, HEIGHT - block_size*3, block_size,1) ,
-    #                    Block(0, HEIGHT - block_size*2, block_size,1), 
-    #                    Block(block_size * 3, HEIGHT - block_size*4, block_size,1)]
+                saw, saw2, rock_head, rock_head2, final, health_item01, 
+                enemys[0],enemys[1],enemys[2], enemys[3],enemys[4],enemys[5],enemys[6],enemys[7],enemys[8],enemys[9]] 
 
     return background, bg_image, objects,enemys,obstacles
 
@@ -983,7 +992,7 @@ def make_level_2():
     enemys = [boss]
     
     objects = [*floor]
-
+    player = Player(100,100,50,50)
     return background, bg_image, objects, enemys
 
 #=========================================draw====================================================
@@ -1002,8 +1011,9 @@ def draw(window, background, bg_image, player, objects, offset_x, bullets,elemen
         bullet.draw(window, offset_x)
     for skill in bossskills:
         skill.draw(window, offset_x)
-    if enemys[-1].name =="boss":
-        boss = enemys[-1]
+
+    # if enemys[-1].name =="boss":
+    #     boss = enemys[-1]
         
     # health gage
     pygame.draw.rect(window, (255,0,0), (10,10, player.current_health, 25))
@@ -1021,11 +1031,12 @@ def draw(window, background, bg_image, player, objects, offset_x, bullets,elemen
     pygame.draw.rect(window, (0,0,255), (10,110, player.current_skill3_gage * 20, 25))
     pygame.draw.rect(window, (255,255,255), (10,110, player.skill3_gage * 20, 25), 4)
     
-    if GAME_LEVEL == 2:
-        pygame.draw.rect(window,(255,0,0), (700, 10, boss.health*10, 25))
-        pygame.draw.rect(window,(255,255,255), (700, 10, 20*10, 25),4)
-    player.draw(window, offset_x)
+    if game_level == 2:
+        #pygame.draw.rect(window,(255,0,0), (700, 10, boss.health*10, 25))
+        pygame.draw.rect(window,(255,0,0), (700, 10, enemys[-1].health*10, 25))
+        pygame.draw.rect(window,(255,255,255), (700, 10, 20*10, 25), 4)
 
+    player.draw(window, offset_x)
     pygame.display.update()
 
 #================================================global function================================================
@@ -1059,7 +1070,7 @@ def collide(player, objects, dx):
     return collided_object
 
 
-def handle_move(player, objects):
+def handle_move(player, objects,game_level, game_over):
     keys = pygame.key.get_pressed()
 
     player.x_vel = 0
@@ -1093,6 +1104,10 @@ def handle_move(player, objects):
 
         if obj and obj.name == "final":
             print("next level")
+            game_level = 2
+            game_over = 1
+    
+    return game_level, game_over
 #================================================main loop================================================
 run = True
 restart_button = Button(WIDTH // 2 - 50, HEIGHT // 2 + 100, restart_img)
@@ -1111,12 +1126,6 @@ bossskills = []
 
 player = Player(100,100,50,50)
 
-if game_level == 1:
-    background, bg_image, objects, enemys, obstacles = make_level_1()
-
-if game_level == 2:
-    background, bg_image, objects, enemys = make_level_2()
-
 
 while run:
     clock.tick(FPS)
@@ -1124,13 +1133,25 @@ while run:
     font = pygame.font.SysFont("arialblack", 70)
     draw_text("Elemental Dungeon",font,"black", 130, 100, window)
 
-
     if main_menu == True:
         if exit_button.draw():
             run = False
         if start_button.draw():
             main_menu = False
     else:
+        if game_over == 1:
+            if game_level == 1:
+                background, bg_image, objects, enemys, obstacles = make_level_1()
+                game_over = 0
+
+            if game_level == 2:
+                background, bg_image, objects, enemys = make_level_2()
+                #player.reset(100,100,50,50)
+                #player.rect.x = 100
+                #player.rect.y = 100
+                offset_x = 0
+                game_over = 0
+
         if game_over == 0:
             player.loop(FPS, game_over)
             for e in enemys:
@@ -1138,14 +1159,138 @@ while run:
             for o in obstacles:
                 o.loop()
 
-            handle_move(player, objects)             
-            #draw(window, background, bg_image, player, objects, offset_x,None, None, None,None, None)
+            game_level, game_over = handle_move(player, objects, game_level, game_over)             
             draw(window, background, bg_image, player, objects, offset_x, elements, bullets, enemys, bossbullets, bossskills)
 
             if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
                 offset_x += player.x_vel 
         
-    
+            skillcnt = 0
+            if enemys[-1].name == "boss":
+                boss = enemys[-1]
+                # 스킬 방향 체크
+                if player.rect.centerx - boss.rect.centerx < 0:
+                    facing = -1
+                    boss.direction = "left"
+                else:
+                    facing = 1
+                    boss.direction = "right"
+                if boss.can_attack1:
+                    skillcnt +=1
+                    if skillcnt < FPS * 0.2:
+                        bossbullet = Projectile(boss.rect.centerx, boss.rect.centery, 10, (0,0,0), facing)
+                        bossbullets.append(bossbullet)
+                        skillcnt = 0
+                if boss.can_attack2:
+                    skillcnt +=1
+                    if skillcnt < FPS*2:
+                        randx = randint(0, WIDTH)
+                        bossskill = Projectile(randx, 0, 20, (255,255,255), 1)
+                        bossskills.append(bossskill)
+                        skillcnt = 0
+
+            # 보스 투사체 발사
+            for bb in bossbullets:
+                if bb.x > boss.rect.centerx - 700 and bb.x < boss.rect.centerx + 700:
+                    bb.x += bb.velocity
+                    if bb.x == player.rect.centerx:
+                        bossbullets.pop(bossbullets.index(bb))
+                        player.make_hit(10)
+                else:
+                    bossbullets.pop(bossbullets.index(bb))
+            for ss in bossskills:
+                if ss.y < HEIGHT:
+                    ss.y += ss.velocity
+                    if ss.x == player.rect.centerx:
+                        bossskills.pop(bossskills.index(ss))
+                        player.make_hit(20)
+                else:
+                    bossskills.pop(bossskills.index(ss))
+            for b in bullets:
+                if b.x > player.rect.centerx - 700 and b.x < player.rect.centerx + 700:
+                    b.x += b.velocity
+                    for i in range(len(enemys)):
+                        # 보스 피격처리
+                        if enemys[i].name == "boss":
+                            if (b.x >=enemys[i].rect.centerx-10 and b.x <= enemys[i].rect.centerx + 10):
+                                if enemys[i].elemental == "fire" and b.color == "blue":
+                                    enemys[i].health -= 1
+                                    enemys[i].damaged = True
+                                elif enemys[i].elemental == "water" and b.color == "green":
+                                    enemys[i].health -= 1
+                                    enemys[i].damaged = True
+                                elif enemys[i].elemental == "grass" and b.color == "red":
+                                    enemys[i].health -= 1
+                                    enemys[i].damaged = True
+                                else:
+                                    print("not damage")
+                                bullets.pop(bullets.index(b))
+                        elif (b.x >= enemys[i].rect.centerx-10 and b.x <= enemys[i].rect.centerx + 10) and (b.y >= enemys[i].rect.centery-10 and b.y <= enemys[i].rect.centery + 10):
+                            if bullet.color == "red":
+                                if enemys[i].elemental == "grass":
+                                    enemys[i].health -= 4
+                                elif enemys[i].elemental == "water":
+                                    enemys[i].health -= 1
+                            elif bullet.color == "green":
+                                if enemys[i].elemental == "water":
+                                    enemys[i].health -= 4
+                                elif enemys[i].elemental == "fire":
+                                    enemys[i].health -= 1
+                            elif bullet.color == "blue":
+                                if enemys[i].elemental == "fire":
+                                    enemys[i].health -= 4
+                                elif enemys[i].elemental == "grass":
+                                    enemys[i].health -= 1
+                            else:
+                                enemys[i].health -= 2 # bullet 이랑 skill damage를 적용해야 함!! 지금은 그냥 임시 숫자임
+                            
+                            enemys[i].damaged = True
+                            bullets.pop(bullets.index(b))
+                        else:
+                            enemys[i].damaged = False
+                else:
+                    bullets.pop(bullets.index(b))
+            # getting item
+            for e in elements:
+                if (player.rect.centerx >= e.x-5 and player.rect.centerx <= e.x+5) and (player.rect.centery >= e.y-5 and player.rect.centery <= e.y+5):
+                #if player.rect.centerx == e.x:
+                    if e.color == "green":
+                        player.current_skill1_gage += 5
+                    elif e.color == "red":
+                        player.current_skill2_gage += 5
+                    elif e.color == "blue":
+                        player.current_skill3_gage += 5
+                    player.current_attack_gage += 5
+                    elements.pop(elements.index(e))
+                    # gage 넘어가지 않게 처리
+                    if player.current_attack_gage > 20:
+                        player.current_attack_gage = 20
+                    if player.current_skill1_gage > 10:
+                        player.current_skill1_gage = 10
+                    if player.current_skill2_gage > 10:
+                        player.current_skill2_gage = 10
+                    if player.current_skill3_gage > 10:
+                        player.current_skill3_gage = 10
+
+            # item spawn => 한번씩만 만들어야함!
+            for i in range(len(enemys)):
+                if enemys[i].name == "boss":
+                    if boss.health <= 0:
+                        pass
+                        #game_scene()
+                elif enemys[i].health <= 0:
+                    tempX = enemys[i].rect.centerx
+                    if tempX != 0:
+                        if enemys[i].elemental == "grass":
+                            element = Elements(tempX, HEIGHT - block_size - 30, 30, "green")
+                        if enemys[i].elemental == "fire":
+                            element = Elements(tempX, HEIGHT - block_size - 30, 30, "red")
+                        if enemys[i].elemental == "water":
+                            element = Elements(tempX, HEIGHT - block_size - 30, 30, "blue")
+                        tempX = 0
+                        elements.append(element)            
+            
+    #==========================================key board input==========================================
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
@@ -1157,7 +1302,6 @@ while run:
             # attack
             if event.key == pygame.K_a:
                 player.attack()
-            
                 if player.direction == "left":
                     facing = -1
                 else:
@@ -1167,8 +1311,7 @@ while run:
                     bullets.append(bullet)
                     player.current_attack_gage -= 1
                 if player.current_attack_gage == 0:
-                    player.can_attack = False
-            
+                    player.can_attack = False     
             # skill1 grass
             if event.key == pygame.K_q:
                 player.attack()
@@ -1194,8 +1337,7 @@ while run:
                     bullets.append(bullet)
                     player.current_skill2_gage -= 1
                 if player.current_skill2_gage == 0:
-                    player.can_attack = False
-            
+                    player.can_attack = False     
             # skill3 water
             if event.key == pygame.K_e:
                 player.attack()
@@ -1209,134 +1351,6 @@ while run:
                     player.current_skill3_gage -= 1
                 if player.current_skill3_gage == 0:
                     player.can_attack = False
-
-    skillcnt = 0
-    if enemys[-1].name == "boss":
-        boss = enemys[-1]
-        # 스킬 방향 체크
-        if player.rect.centerx - boss.rect.centerx < 0:
-            facing = -1
-            boss.direction = "left"
-        else:
-            facing = 1
-            boss.direction = "right"
-        if boss.can_attack1:
-            skillcnt +=1
-            if skillcnt < FPS * 0.2:
-                bossbullet = Projectile(boss.rect.centerx, boss.rect.centery, 10, (0,0,0), facing)
-                bossbullets.append(bossbullet)
-                skillcnt = 0
-        if boss.can_attack2:
-            skillcnt +=1
-            if skillcnt < FPS*2:
-                randx = randint(0, WIDTH)
-                bossskill = Projectile(randx, 0, 20, (255,255,255), 1)
-                bossskills.append(bossskill)
-                skillcnt = 0
-
-    # 보스 투사체 발사
-    for bb in bossbullets:
-        if bb.x > boss.rect.centerx - 700 and bb.x < boss.rect.centerx + 700:
-            bb.x += bb.velocity
-            if bb.x == player.rect.centerx:
-                bossbullets.pop(bossbullets.index(bb))
-                player.make_hit(10)
-        else:
-            bossbullets.pop(bossbullets.index(bb))
-    for ss in bossskills:
-        if ss.y < HEIGHT:
-            ss.y += ss.velocity
-            if ss.x == player.rect.centerx:
-                bossskills.pop(bossskills.index(ss))
-                player.make_hit(20)
-        else:
-            bossskills.pop(bossskills.index(ss))
-    for b in bullets:
-        if b.x > player.rect.centerx - 700 and b.x < player.rect.centerx + 700:
-            b.x += b.velocity
-            for i in range(len(enemys)):
-                # 보스 피격처리
-                if enemys[i].name == "boss":
-                    if (b.x >=enemys[i].rect.centerx-10 and b.x <= enemys[i].rect.centerx + 10):
-                        if enemys[i].elemental == "fire" and b.color == "blue":
-                            enemys[i].health -= 1
-                            #print(f"{b.color}, {enemys[i].elemental}")
-                            enemys[i].damaged = True
-                        elif enemys[i].elemental == "water" and b.color == "green":
-                            enemys[i].health -= 1
-                            #print(f"{b.color}, {enemys[i].elemental}")
-                            enemys[i].damaged = True
-                        elif enemys[i].elemental == "grass" and b.color == "red":
-                            enemys[i].health -= 1
-                            #print(f"{b.color}, {enemys[i].elemental}")
-                            enemys[i].damaged = True
-                        else:
-                            print("not damage")
-                        bullets.pop(bullets.index(b))
-                elif (b.x >= enemys[i].rect.centerx-10 and b.x <= enemys[i].rect.centerx + 10) and (b.y >= enemys[i].rect.centery-10 and b.y <= enemys[i].rect.centery + 10):
-                    if bullet.color == "red":
-                        if enemys[i].elemental == "grass":
-                            enemys[i].health -= 4
-                        elif enemys[i].elemental == "water":
-                            enemys[i].health -= 1
-                    elif bullet.color == "green":
-                        if enemys[i].elemental == "water":
-                            enemys[i].health -= 4
-                        elif enemys[i].elemental == "fire":
-                            enemys[i].health -= 1
-                    elif bullet.color == "blue":
-                        if enemys[i].elemental == "fire":
-                            enemys[i].health -= 4
-                        elif enemys[i].elemental == "grass":
-                            enemys[i].health -= 1
-                    else:
-                        enemys[i].health -= 2 # bullet 이랑 skill damage를 적용해야 함!! 지금은 그냥 임시 숫자임
-                    
-                    enemys[i].damaged = True
-                    bullets.pop(bullets.index(b))
-                else:
-                    enemys[i].damaged = False
-        else:
-            bullets.pop(bullets.index(b))
-    # getting item
-    for e in elements:
-        if (player.rect.centerx >= e.x-5 and player.rect.centerx <= e.x+5) and (player.rect.centery >= e.y-5 and player.rect.centery <= e.y+5):
-        #if player.rect.centerx == e.x:
-            if e.color == "green":
-                player.current_skill1_gage += 5
-            elif e.color == "red":
-                player.current_skill2_gage += 5
-            elif e.color == "blue":
-                player.current_skill3_gage += 5
-            player.current_attack_gage += 5
-            elements.pop(elements.index(e))
-            # gage 넘어가지 않게 처리
-            if player.current_attack_gage > 20:
-                player.current_attack_gage = 20
-            if player.current_skill1_gage > 10:
-                player.current_skill1_gage = 10
-            if player.current_skill2_gage > 10:
-                player.current_skill2_gage = 10
-            if player.current_skill3_gage > 10:
-                player.current_skill3_gage = 10
-
-    # item spawn => 한번씩만 만들어야함!
-    for i in range(len(enemys)):
-        if enemys[i].name == "boss":
-            if boss.health <= 0:
-                pass
-                #game_scene()
-        elif enemys[i].health <= 0:
-            tempX = enemys[i].rect.centerx
-            if tempX != 0:
-                if enemys[i].elemental == "grass":
-                    element = Elements(tempX, HEIGHT - block_size - 30, 30, "green")
-                if enemys[i].elemental == "fire":
-                    element = Elements(tempX, HEIGHT - block_size - 30, 30, "red")
-                if enemys[i].elemental == "water":
-                    element = Elements(tempX, HEIGHT - block_size - 30, 30, "blue")
-                tempX = 0
-                elements.append(element)
 
     pygame.display.update()
 
