@@ -12,6 +12,8 @@ block_size = 96
 game_level = 1
 
 window = pygame.display.set_mode((WIDTH, HEIGHT))
+window2 = pygame.display.set_mode((WIDTH, HEIGHT))
+
 pygame.display.set_caption("Elemental Dungeon")
 
 game_over = 1
@@ -148,11 +150,11 @@ class Player(pygame.sprite.Sprite):
 
         # for skill 
         self.skill1_gage = 10
-        self.current_skill1_gage = 10
+        self.current_skill1_gage = 5
         self.skill2_gage = 10
-        self.current_skill2_gage = 10
+        self.current_skill2_gage = 5
         self.skill3_gage = 10
-        self.current_skill3_gage = 10
+        self.current_skill3_gage = 5
 
     def jump(self):
         self.y_vel = -self.GRAVITY * 8
@@ -220,6 +222,7 @@ class Player(pygame.sprite.Sprite):
             self.update_sprite()
 
             if self.current_health <= 0:
+                #game_scene()
                 game_over = -1    
 
         return game_over
@@ -634,16 +637,17 @@ class BOSS(Enemy):
         self.animation_count = 0
 
     def make_bullet(self):
-        if self.can_attack1:
-            for i in range(10):
-                bossbullet = Projectile(self.rect.centerx, self.rect.centery, 10, (0,0,0), facing)
-                self.bossbulletcnt[i] = bossbullet
-        elif self.can_attack2:
-            for i in range(20):
-                randx = randint(0, WIDTH)
-                bossskill = Projectile(randx, 0, 20, (255,255,255), 1)
-                self.bossskillcnt[i] = bossskill
-        return self.bossbulletcnt, self.bossskillcnt
+        for i in range(10):
+            bossbullet = Projectile(self.rect.centerx, self.rect.centery, 10, (0,0,0), facing)
+            self.bossbulletcnt.append(bossbullet)
+        return self.bossbulletcnt
+
+    def make_skill(self):
+        for i in range(20):
+            randx = randint(0, WIDTH)
+            bossskill = Projectile(randx, 0, 20, (255,255,255), 1)
+            self.bossskillcnt.append(bossskill)
+        return self.bossskillcnt
 
     def update_sprite(self):
         sprite_sheet = "Idle"
@@ -690,7 +694,7 @@ class BOSS(Enemy):
         elif rnum == 3:
             self.elemental = "water"
         print(f"elemental Change!! to {self.elemental}")
-        text = f"{self.elemental}"
+        #text = f"{self.elemental}"
         #draw_text(text+" modes", "black",400, 400, window)
         self.elemental_change = 0
 
@@ -714,6 +718,8 @@ class BOSS(Enemy):
             self.death = True
             self.death_count += 1
             if self.death_count > fps*0.3:
+                self.death = False
+                game_scene("GAME CLEAR")
                 print("DONE")
                 
         # 보스 속성 바꾸기
@@ -732,14 +738,13 @@ class BOSS(Enemy):
 
         # 분노 모드
         if self.health <= 5:
-            #print("분노 모드!") # 이때 몬스터 속성 빠르게 바꾸기????
             self.attack3_gage = 1
-            if self.elemental_change > fps:
+            if self.elemental_change > fps*2:
                 self.change_mode()
  
         if self.can_attack1:
             self.attack_count1 += 1
-            if self.attack_count1 > fps*1.2:
+            if self.attack_count1 > fps*1:
                 self.can_attack1 = False
                 self.attack1_gage = 0
                 self.attack_count1 = 0
@@ -747,7 +752,7 @@ class BOSS(Enemy):
 
         if self.can_attack2:
             self.attack_count2 += 1
-            if self.attack_count2 > fps*2.2:
+            if self.attack_count2 > fps*1.5:
                 self.can_attack2 = False
                 self.attack2_gage = 0
                 self.attack_count2 = 0
@@ -909,19 +914,19 @@ class HealthItem(Object):
         if self.animation_count // self.ANIMATION_DELAY > len(sprites):
             self.animation_count = 0
 
-# 64*64
+# 46*56
 class FinalZone(Object):
     ANIMATION_DELAY = 3
     def __init__(self, x, y, width, height):
         super().__init__(x, y, width, height, "final")
-        self.final = load_sprite_sheets("Items","Checkpoints",width, height)
-        self.image = self.final["End"][0]
+        self.final = load_sprite_sheets("Items","Door",width, height)
+        self.image = self.final["Opening"][0]
         self.mask = pygame.mask.from_surface(self.image)
         self.animation_count = 0
-        self.animation_name = "End"
+        self.animation_name = "Opening"
 
     def idle(self):
-        self.animation_name = "End"
+        self.animation_name = "Opening"
 
     def loop(self):
         sprites = self.final[self.animation_name]
@@ -935,6 +940,7 @@ class FinalZone(Object):
 #================================================make level================================================
 def make_level_1():
     background, bg_image = get_background("Yellow.png")
+    sound = pygame.mixer.Sound("music/xDeviruchi - Minigame .wav")
 
     # 0~1000 / 1000 ~ 2000 / 2000 ~ 3000 / 3000 ~ 4000
     enemy1 = Enemy(400, HEIGHT - block_size- 64, 32, 32, 400+150, "grass")
@@ -968,7 +974,7 @@ def make_level_1():
     rock_head2 = RockHead(3200, HEIGHT-block_size -42*10, 42,42)
     rock_head2.Idle()
     
-    final = FinalZone(WIDTH*4 - 150, HEIGHT - block_size - 108, 64, 64)
+    final = FinalZone(WIDTH*4 - 150, HEIGHT - block_size - 108, 46, 56)
     final.idle()
 
     # 아이템 리스트에 넣고 관리하기
@@ -1000,10 +1006,11 @@ def make_level_1():
                 saw, saw2, rock_head, rock_head2, final, health_item01, health_item02, health_item03,
                 enemys[0],enemys[1],enemys[2], enemys[3],enemys[4],enemys[5],enemys[6],enemys[7],enemys[8],enemys[9]] 
 
-    return background, bg_image, objects,enemys, obstacles
+    return background, bg_image, objects,enemys, obstacles, sound
 
 #=========================================make level 2====================================================
 def make_level_2():
+    sound = pygame.mixer.Sound("music/xDeviruchi - The Icy Cave .wav")
     background, bg_image = get_background("Gray.png")
     block_size = 96
 
@@ -1011,8 +1018,9 @@ def make_level_2():
     boss = BOSS(400, HEIGHT - block_size - 250 - 64, 32, 32, 400 + 100, "fire")
     enemys = [boss]
     
-    objects = [*floor]
-    return background, bg_image, objects, enemys
+    objects = [*floor, Block(block_size, HEIGHT - block_size*2, block_size,1),
+                       Block(WIDTH, HEIGHT - block_size*2, block_size,1)]
+    return background, bg_image, objects, enemys, sound
 
 #=========================================draw====================================================
 def draw(window, background, bg_image, player, objects, offset_x, bullets,elements, enemys, bossbullets, bossskills):
@@ -1030,9 +1038,6 @@ def draw(window, background, bg_image, player, objects, offset_x, bullets,elemen
         bullet.draw(window, offset_x)
     for skill in bossskills:
         skill.draw(window, offset_x)
-
-    # if enemys[-1].name =="boss":
-    #     boss = enemys[-1]
         
     # health gage
     pygame.draw.rect(window, (255,0,0), (10,10, player.current_health, 25))
@@ -1051,7 +1056,6 @@ def draw(window, background, bg_image, player, objects, offset_x, bullets,elemen
     pygame.draw.rect(window, (255,255,255), (10,110, player.skill3_gage * 20, 25), 4)
     
     if game_level == 2:
-        #pygame.draw.rect(window,(255,0,0), (700, 10, boss.health*10, 25))
         pygame.draw.rect(window,(255,0,0), (700, 10, enemys[-1].health*10, 25))
         pygame.draw.rect(window,(255,255,255), (700, 10, 20*10, 25), 4)
 
@@ -1127,6 +1131,16 @@ def handle_move(player, objects,game_level, game_over):
             game_over = 1
     
     return game_level, game_over
+
+def game_scene(text="GAME OVER"):
+    window.fill((80,80,80))
+    font = pygame.font.SysFont("arialblack", 40)
+    draw_text(text, font, "black", 350, 400, window)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            quit()
+
+    pygame.display.update()
 #================================================main loop================================================
 run = True
 restart_button = Button(WIDTH // 2 - 50, HEIGHT // 2 + 100, restart_img)
@@ -1144,6 +1158,21 @@ bossbullets = [] # for boss attack
 bossskills = []
 
 player = Player(100,100,50,50)
+
+sound = pygame.mixer.Sound("music/xDeviruchi - Minigame .wav")
+sound.play(-1)
+sound.set_volume(0.2)
+
+attacksound = pygame.mixer.Sound("music/attack.wav")
+attacksound.set_volume(5)
+jumpsound = pygame.mixer.Sound("music/Jump.wav")
+jumpsound.set_volume(2)
+grasssound = pygame.mixer.Sound("music/Earth.wav")
+grasssound.set_volume(2)
+firesound = pygame.mixer.Sound("music/Fire.wav")
+firesound.set_volume(2)
+watersound = pygame.mixer.Sound("music/Water.wav")
+watersound.set_volume(2)
 
 
 while run:
@@ -1164,13 +1193,29 @@ while run:
         if start_button.draw():
             main_menu = False
     else:
+        if game_over == -1:
+            game_scene()
+            if restart_button.draw():
+                game_over = 1
+                main_menu = False
+                if game_level == 2: 
+                    game_level = 1
+                player = Player(100,100,50,50)
+                offset_x = 0
+                background, bg_image, objects, enemys, obstacles,sound = make_level_1()
+
+        # game_clear
+        if game_over == -2:
+            game_scene("GAME CLEAR")
+
+        # game_start
         if game_over == 1:
             if game_level == 1:
-                background, bg_image, objects, enemys, obstacles = make_level_1()
+                background, bg_image, objects, enemys, obstacles,sound = make_level_1()
                 game_over = 0
 
             if game_level == 2:
-                background, bg_image, objects, enemys = make_level_2()
+                background, bg_image, objects, enemys,sound = make_level_2()
                 #player.reset(100,100,50,50)
                 player.rect.x = 100
                 player.rect.y = 100
@@ -1178,7 +1223,7 @@ while run:
                 game_over = 0
 
         if game_over == 0:
-            player.loop(FPS, game_over)
+            game_over = player.loop(FPS, game_over)
             for e in enemys:
                 e.loop(FPS)
             for o in obstacles:
@@ -1202,14 +1247,14 @@ while run:
                     boss.direction = "right"
                 if boss.can_attack1:
                     skillcnt +=1
-                    if skillcnt < FPS * 0.03:
-                        bossbullet = Projectile(boss.rect.centerx, boss.rect.centery, 10, (0,0,0), facing)
+                    if skillcnt < FPS * 0.02:
+                        bossbullet = Projectile(boss.rect.centerx, player.rect.centery, 10, (0,0,0), facing)
                         bossbullets.append(bossbullet)
                         skillcnt = 0
 
                 if boss.can_attack2:
                     skillcnt +=1
-                    if skillcnt < FPS*0.4:
+                    if skillcnt < FPS * 0.02:
                         randx = randint(0, WIDTH)
                         bossskill = Projectile(randx, 0, 20, (255,255,255), 1)
                         bossskills.append(bossskill)
@@ -1219,17 +1264,18 @@ while run:
             for bb in bossbullets:
                 if bb.x > boss.rect.centerx - 700 and bb.x < boss.rect.centerx + 700:
                     bb.x += bb.velocity
-                    if bb.x == player.rect.centerx:
+                    if bb.x == player.rect.centerx and (bb.y >= player.rect.centery-5 or bb.y <= player.rect.centery + 5):
                         bossbullets.pop(bossbullets.index(bb))
-                        player.make_hit(10)
+                        player.make_hit(5)
                 else:
                     bossbullets.pop(bossbullets.index(bb))
+
             for ss in bossskills:
                 if ss.y < HEIGHT:
                     ss.y += ss.velocity
-                    if ss.x == player.rect.centerx:
+                    if ss.x == player.rect.centerx and (ss.y >= player.rect.centery-5 or ss.y <= player.rect.centery + 5):
                         bossskills.pop(bossskills.index(ss))
-                        player.make_hit(20)
+                        player.make_hit(10)
                 else:
                     bossskills.pop(bossskills.index(ss))
 
@@ -1253,6 +1299,7 @@ while run:
                                 else:
                                     print("not damage")
                                 bullets.pop(bullets.index(b))
+                                
                         elif (b.x >= enemys[i].rect.centerx-10 and b.x <= enemys[i].rect.centerx + 10) and (b.y >= enemys[i].rect.centery-10 and b.y <= enemys[i].rect.centery + 10):
                             if bullet.color == "red":
                                 if enemys[i].elemental == "grass":
@@ -1303,7 +1350,9 @@ while run:
             for e in enemys:
                 if e.name == "boss":
                     if boss.health <= 0:
-                        pass
+                        game_over = -2
+                        #game_scene("GAME CLEAR")
+                        #run = False
                 elif e.health <= 0:
                     tempX = e.rect.centerx
                     #enemys.pop()
@@ -1326,9 +1375,11 @@ while run:
             # jump
             if event.key == pygame.K_s and player.jump_count < 2:
                 player.jump()
+                jumpsound.play()
             # attack
             if event.key == pygame.K_a:
                 player.attack()
+                attacksound.play()
                 if player.direction == "left":
                     facing = -1
                 else:
@@ -1342,6 +1393,7 @@ while run:
             # skill1 grass
             if event.key == pygame.K_q:
                 player.attack()
+                grasssound.play()
                 if player.direction == "left":
                     facing = -1
                 else:
@@ -1355,6 +1407,7 @@ while run:
             # skill2 fire
             if event.key == pygame.K_w:
                 player.attack()
+                firesound.play()
                 if player.direction == "left":
                     facing = -1
                 else:
@@ -1368,6 +1421,7 @@ while run:
             # skill3 water
             if event.key == pygame.K_e:
                 player.attack()
+                watersound.play()
                 if player.direction == "left":
                     facing = -1
                 else:
