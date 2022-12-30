@@ -1231,9 +1231,9 @@ while run:
 
             game_level, game_over = handle_move(player, objects, game_level, game_over)             
             draw(window, background, bg_image, player, objects, offset_x, elements, bullets, enemys, bossbullets, bossskills)
-
-            if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
-                offset_x += player.x_vel 
+            if game_level == 1:
+                if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
+                    offset_x += player.x_vel 
         
             skillcnt = 0
             if enemys[-1].name == "boss":
