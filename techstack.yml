@@ -1,7 +1,8 @@
 repo_name: GbLeem/Elemental_dungeon
-report_id: cca0428a81cb8243d568e267799681e7
+report_id: df5e3100eb8a5ecab1db038b48350501
+version: 0.1
 repo_type: Public
-timestamp: '2023-12-14T13:26:35+00:00'
+timestamp: '2024-01-05T08:29:37+00:00'
 requested_by: GbLeem
 provider: github
 branch: main
@@ -16,6 +17,7 @@ tools:
   category: Languages & Frameworks
   sub_category: Languages
   image_url: https://img.stackshare.io/service/993/pUBY5pVj.png
+  detection_source_url: https://github.com/GbLeem/Elemental_dungeon
   detection_source: Repo Metadata
 - name: Git
   description: Fast, scalable, distributed revision control system
@@ -25,4 +27,5 @@ tools:
   category: Build, Test, Deploy
   sub_category: Version Control System
   image_url: https://img.stackshare.io/service/1046/git.png
+  detection_source_url: https://github.com/GbLeem/Elemental_dungeon
   detection_source: Repo Metadata
